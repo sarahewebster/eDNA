@@ -1,0 +1,113 @@
+###############################################################
+# Configuration data file for the bottom node application.
+#
+# This is an "INI" file format, with "sections" which include
+# individual key=value pairs.
+#
+# Notes:
+#
+# - Sections are delineated by names within [SquareBrackets]
+#
+# - You can use the same name for a value in different
+#   sections and they will be maintained separately.
+#
+# - Anything to the right of the "#" sign is ignored, either
+#   an entire line or the tail end.
+#
+# - You can "parameterize" a variable by declaring it at
+#   the beginning of the file prefixed with "$"
+#   This allows you to define - once - a value which may
+#   need to be referred to repeatedly. E.G.:
+#     $MyParameter = 10
+#   Then later in the file refer to this variable:
+#     MyValue = $MyParameter
+#   Note that parameterized variables MUST be declared before
+#   ANY data section.
+#
+###############################################################
+
+#### Common variable usage ####
+
+$BASEDIR = /home/pi/eDNA
+
+#========================= System Parameters ====================
+[System]
+#where to put logs 
+LogDir = $BASEDIR/logs
+
+# ========================== Logging Parameters =================
+[Loggers]
+
+# Set the default logging level.
+# This is used in any module which does not specify a level
+DefaultLogLevel = INFO
+
+# Set log level for individual loggers.
+# This overrides the default log level specified above.
+# The names here must match those in the code at lines that 
+# look like:
+#  _myLogger = new Logger("TheLoggerName")
+# For example, in the CameraCalibrator class we might have 
+# a line like:
+#  _myLogger = new Logger("CameraCalibrator")
+
+# Main app(s)
+ednaHandler = INFO
+#=============== eDNA Communications Parameters ===============
+[Track]
+RunTime=3600
+RecordRate=10
+
+#set GPIO pins
+Flow=22
+
+#peristaltic pump
+WaterPump=21
+SoluPump=12
+
+#PinchValveGPIO= 3
+
+#green LED
+Valve1=20 
+Valve2=19
+Valve3=16
+Valve4=13
+
+#-----------------------------------------------------
+[FlowSensor]
+#rate of counts (L/min)
+RateCnt=0     
+#total counts (total liters)      
+TotCnt=0        
+#initialize time    
+TimeStart=0    
+#pulses to liters constant 
+#based on testing should be .0001323  
+Constant=0.01323   
+        
+#last state 0 or 1 or other?                
+LastGpio=2                              
+
+#total liters to check for at one time 
+TargetWaterLiters=.2
+TargetSoluLiters=.1
+
+PumpWTime = 30
+PumpSTime = 10
+#-----------------------------------------------------
+[PressureSensor]
+#pressure sensor parameters(L)
+TargetDepth1=10
+TargetDepth2=20
+TargetDepth3=30
+DepthError=2
+
+#PROGRAMMING PARAMETERS 
+#time sleep 
+Sleep=.25
+
+
+
+
+
+# -------------------------------------------------------------------

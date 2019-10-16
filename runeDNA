@@ -1,0 +1,40 @@
+#!/bin/bash
+# Start temperature, humidity, pressure recorder 
+
+#directories and files needed 
+utilities=/home/pi/eDNA/utilities
+config=/home/pi/eDNA/utilities/Config.dat
+
+#get PIDs  
+ednaPID=$(pidof python ednaMain.py)
+
+#add directories needed to run temp,pressure,humidity app to pythonpath
+export PYTHONPATH=$PYTHONPATH/$utilities
+
+#=================================================================================
+#killl apps if necessary 
+#=================================================================================
+if [ $# -eq 1 ]; then
+	if [ $1 == "stop" ]; then
+		echo "STOP Requested"
+		# Kill the control GUI if it's running
+		if [ ! -z $ednaPID ]; then
+			echo "Killing edna app"
+			kill -9 $ednaPID
+		else
+			echo "edna not running"
+		fi 
+		exit 
+	fi 
+fi 
+#
+#=================================================================================
+#Kill running apps 
+#=================================================================================
+./runeDNA stop 
+
+#=================================================================================
+#Run app
+#=================================================================================
+echo " --- RUN BOTTOM NODE ---"
+python ednaMain.py $config &
