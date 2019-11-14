@@ -1,0 +1,19 @@
+#!/bin/bash
+# Start temperature, humidity, pressure recorder 
+
+#directories and files needed 
+utilities=/home/pi/eDNA/utilities
+config=/home/pi/eDNA/utilities/Config.dat
+
+#get PIDs  
+ednaPID=$(pidof python prime.py)
+
+#add directories needed to run temp,pressure,humidity app to pythonpath
+export PYTHONPATH=$PYTHONPATH/$utilities
+
+runTime = $1
+#=================================================================================
+#Run app
+#=================================================================================
+echo " --- RUN BOTTOM NODE ---"
+python prime.py $runTime &

@@ -1,26 +1,41 @@
 #!/usr/bin/python
 
 # @author: Viviana Castillo, APL UW
-####################################################################
-
-####################################################################
+##############################################################################################
+#This class runs all appropriate hardware to collect one full sample of eDNA plus ethanol
+#Appropriate valves are opened, motors are ran and then valves close. 
+#If harware runs into problems, sample will be lost after a specific duration identified in 
+#testing. If time elapses, ethanol is still added to sample. 
+##############################################################################################
 #standard imports
 from utils import *
 import RPi.GPIO as GPIO
 import logging
+import threading
 
 #-------------------------------------------------------------------
-
 class ednaClass :
     ##############################################################################################
-    #constructor for class ednaStuff
+    #constructor for class ednaClass 
     #
-    #arguments are:
-    #   
-    #   
-    #   
+    #arguments are found in the Config.dat file:
+    #    flowSensor - GPIO location
+    #    waterPump - GPIO location
+    #    soluPump - GPIO location (ethanol)
+    #    rateCnt - rate at which water is flowing
+    #    totalCnt - total water meas
+    #    timeStart - initialize time to 0
+    #    constant - calc constant for water flow 
+    #    lastGpio - initialize the Gpio state 
+    #    tWLiters - target amount of L for water
+    #    tWLiters - target amount of L for solution (ethanol)
+    #    pumpWTime - Total amout of time pumping water should take 
+    #    pumpSTime - Total amount of time pumping ethanol should take
+    #    eventLog - Log to event log
+    #    dataFile - Log to data file 
+    #
     ##############################################################################################
-    def __init__(self,config,eventLog,dataFile):
+    def __init__(self,config,eventLog,dataFile,sensor):
         
         self.flowSensor = config.getInt('Track', 'Flow')
         self.waterPump = config.getInt('Track', 'WaterPump')
@@ -30,90 +45,93 @@ class ednaClass :
         self.timeStart = config.getFloat('FlowSensor', 'TimeStart')
         self.constant = config.getFloat('FlowSensor', 'Constant')
         self.lastGpio = config.getInt('FlowSensor', 'LastGpio')
-        self.targetWLiters = config.getFloat('FlowSensor', 'TargetWaterLiters')
-        self.targetSLiters = config.getFloat('FlowSensor', 'TargetSoluLiters')
+        self.tWLiters = config.getFloat('FlowSensor', 'TargetWaterLiters')
+        self.tSLiters = config.getFloat('FlowSensor', 'TargetSoluLiters')
         self.pumpWTime = config.getFloat('FlowSensor', 'PumpWTime')
         self.pumpSTime = config.getFloat('FlowSensor', 'PumpSTime')
         self.eventLog = eventLog
         self.dataFile = dataFile
+        self.sensor = sensor
         
     def run(self,elapsedTime,valve1,valve2):
         GPIO.output(valve1, GPIO.HIGH)
-        print ("GPIO HIGH (on), valve one should be flipped open")
+        print ("[%.3f] - Flipping valve open, Valve GPIO: %d" % (elapsedTime,valve1))
         self.eventLog.info("[%.3f] - Flipping valve open. Valve GPIO: %d" % (elapsedTime,valve1))
         
         GPIO.output(self.waterPump, GPIO.HIGH)
-        print ("GPIO HIGH (on), water pump should be on")
-        self.eventLog.info("[%.3f] - Turning water pump on" % (elapsedTime))
+        print ("[%.3f] - Turning water pump on. Water pump GPIO: %d" % (elapsedTime,self.waterPump))
+        self.eventLog.info("[%.3f] - Turning water pump on. Water pump GPIO: %d" % (elapsedTime,self.waterPump))
         
-        totalWaterL = recordFlow(self.flowSensor,
-                         self.rateCnt,
-                         self.totalCnt,
-                         self.timeStart,
-                         self.constant,
-                         self.lastGpio,
-                         self.targetWLiters,
-                         self.eventLog,
-                         self.dataFile,
-                         elapsedTime,
-                         self.pumpWTime)
-        
+        (totalWaterL,elapsedTime) = recordFlow(self.flowSensor,
+                                self.rateCnt,
+                                self.totalCnt,
+                                self.timeStart,
+                                self.constant,
+                                self.lastGpio,
+                                self.tWLiters,
+                                self.eventLog,
+                                self.dataFile,
+                                elapsedTime,
+                                self.pumpWTime,
+                                self.sensor)
+        elapsedTime = elapsedTime
         if totalWaterL == None:
             self.eventLog.info("[%.3f] - No water flow detected, flipping valve/motor off" % (elapsedTime))
-            
-            totalWaterL = self.targetWLiters
-            self.eventLog.info("[%.3f] - Faking successfull water intake to intake ethanol. totalWaterL:%f," % (elapsedTime,totalWaterL))
+            print ("[%.3f] - ERROR: Solution lost. Faking successfull intake in order to add ethanol and try to salvage sample")
+            totalWaterL = self.tWLiters
+            self.eventLog.info("[%.3f] - ERROR: Solution lost. Faking successfull water intake to intake ethanol. totalWaterL: %f," % (elapsedTime,totalWaterL))
              
         
-        if totalWaterL >= self.targetWLiters:
-            print ("TARGET LITERS OF WATER REACHED")
-            self.eventLog.info("[%.3f] - Target Liters of water reached: %f" % (elapsedTime,totalWaterL))
+        if totalWaterL >= self.tWLiters:
+            print ("[%.3f] - Prepping for ethanol" % elapsedTime)
+            self.eventLog.info("[%.3f] - Prepping for ethanol" % elapsedTime)
             
             GPIO.output(valve1, GPIO.LOW)
-            print ("Flip valve closed")
+            print ("[%.3f] - Flipping valve closed. Valve GPIO: %d" % (elapsedTime, valve1))
             self.eventLog.info("[%.3f] - Flipping valve closed. Valve GPIO: %d" % (elapsedTime,valve1))
             
             GPIO.output(self.waterPump, GPIO.LOW)
-            print ("GPIO HIGH (off), water pump should be off")
-            self.eventLog.info("[%.3f] - Turning water pump off" % (elapsedTime))
+            print ("[%.3f] - Turning water pump off. Water pump GPIO: %d" % (elapsedTime,self.waterPump))
+            self.eventLog.info("[%.3f] - Turning water pump off. Water pump GPIO: %d" % (elapsedTime,self.waterPump))
             
             GPIO.output(valve2, GPIO.HIGH)
-            print ("GPIO HIGH (on), valve two should be flipped open")
+            print ("[%.3f] - Flipping valve open. Valve GPIO: %d" % (elapsedTime,valve2))
             self.eventLog.info("[%.3f] - Flipping valve open. Valve GPIO: %d" % (elapsedTime,valve2))
             
             GPIO.output(self.soluPump, GPIO.HIGH)
-            print ("GPIO HIGH (on), solution pump should be on")
-            self.eventLog.info("[%.3f] - Turning solution pump on" % (elapsedTime))
+            print ("[%.3f] - Turning solution pump on. Solution pump GPIO: %d" % (elapsedTime, self.soluPump))
+            self.eventLog.info("[%.3f] - Turning solution pump on. Solution pump GPIO: %d" % (elapsedTime, self.soluPump))
 
             
-            totalSoluL = recordFlow(self.flowSensor,
+            (totalSoluL,elapsedTime) = recordFlow(self.flowSensor,
                          self.rateCnt,
                          self.totalCnt,
                          self.timeStart,
                          self.constant,
                          self.lastGpio,
-                         self.targetSLiters,
+                         self.tSLiters,
                          self.eventLog,
                          self.dataFile,
                          elapsedTime,
-                         self.pumpSTime)
+                         self.pumpSTime,
+                         self.sensor)
+            
             if totalSoluL == None:
-                self.eventLog.info("[%.3f] - No ethanol flow detected, flipping valve/motor off" % (elapsedTime))
-                totalSoluL = self.targetSLiters
+                print ("[%.3f] - ERROR: No ethanol flow detected" % (elapsedTime))
+                self.eventLog.info("[%.3f] - ERROR: No ethanol flow detected" % (elapsedTime))
+                totalSoluL = self.tSLiters
                 self.eventLog.info("[%.3f] - Faking successfull solution intake to close all valves/motors. totalWaterL:%f," % (elapsedTime,totalSoluL))
                
-            if totalSoluL >= self.targetSLiters:
-                print ("TARGET LITERS OF SOLUTION REACHED")
-                self.eventLog.info("[%.3f] - Target Liters of solution reached: %f" % (elapsedTime,totalSoluL))
+            if totalSoluL >= self.tSLiters:
+                print ("[%.3f] - Prepping for system shutdown" % (elapsedTime))
+                self.eventLog.info("[%.3f] - Prepping for system shutdown" % (elapsedTime))
                 
                 GPIO.output(valve2, GPIO.LOW)
-                print ("Flip valve two closed")
+                print ("[%.3f] - Flipping valve closed. Valve GPIO: %d" % (elapsedTime,valve2))
                 self.eventLog.info("[%.3f] - Flipping valve closed. Valve GPIO: %d" % (elapsedTime,valve2))
                 
                 GPIO.output(self.soluPump, GPIO.LOW)
-                print ("GPIO LOW (off), solution pump should be off")
-                self.eventLog.info("[%.3f] - Turning solution pump off" % (elapsedTime))
+                print ("[%.3f] - Turning solution pump off. Solution pump GPIO: %d" % (elapsedTime, self.soluPump))
+                self.eventLog.info("[%.3f] - Turning solution pump off, Solution pump GPIO: %d" % (elapsedTime, self.soluPump))
                 
-            return (totalWaterL, totalSoluL)
     
- 
