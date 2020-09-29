@@ -40,7 +40,7 @@ class Config:
 
         # Sanity check
         if( not os.path.exists(configFilename) ):
-            print 'ERROR: File "%s" not found' % configFilename
+            print ('ERROR: File "%s" not found' % configFilename)
             return False
 
         # Open the file & read it all in
@@ -120,8 +120,8 @@ class Config:
             return intVal
         # No-can-do...
         except:
-            print 'ERROR: Value "%s" for key "%s" cannot be converted to int' \
-                % (strVal,key)
+            print ('ERROR: Value "%s" for key "%s" cannot be converted to int' \
+                % (strVal,key))
             return None
 
         
@@ -148,8 +148,8 @@ class Config:
             return floatVal
         # No-can-do...
         except:
-            print 'ERROR: Value "%s" for key "%s" cannot be converted to float' \
-                % (strVal,key)
+            print ('ERROR: Value "%s" for key "%s" cannot be converted to float' \
+                % (strVal,key))
             return None
 
         

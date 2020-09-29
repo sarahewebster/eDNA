@@ -6,14 +6,15 @@ utilities=/home/pi/eDNA/utilities
 config=/home/pi/eDNA/utilities/Config.dat
 
 #get PIDs  
-ednaPID=$(pidof python prime.py)
+#ednaPID=$(pidof python prime.py)
 
 #add directories needed to run temp,pressure,humidity app to pythonpath
-export PYTHONPATH=$PYTHONPATH/$utilities
+export PYTHONPATH=$PYTHONPATH:/$utilities:/home/pi/eDNA
 
-runTime = $1
+             
+runTime=$1
 #=================================================================================
 #Run app
 #=================================================================================
 echo " --- RUN BOTTOM NODE ---"
-python prime.py $runTime &
+python3 prime.py $config $runTime &

@@ -7,35 +7,36 @@ config=/home/pi/eDNA/utilities/Config.dat
 lib=/usr/local/lib/python2.7/dist-packages
 
 #get PIDs  
-ednaPID=$(pidof python ednaMain.py)
+ednaPID=$(ps -ef | grep "ednaMain.py" | grep -v grep | awk '{ print $2 }')
+echo "ednaPID =" $ednaPID
 
 #add directories needed to run temp,pressure,humidity app to pythonpath
-export PYTHONPATH=$PYTHONPATH/$utilities:$lib
+export PYTHONPATH=$PYTHONPATH:/$utilities:/home/pi/eDNA
 
 #=================================================================================
 #killl apps if necessary 
 #=================================================================================
-if [ $# -eq 1 ]; then
-	if [ $1 == "stop" ]; then
-		echo "STOP Requested"
-		# Kill the control GUI if it's running
-		if [ ! -z $ednaPID ]; then
-			echo "Killing edna app"
-			sudo kill -9 $ednaPID
-		else
-			echo "edna not running"
-		fi 
-		exit 
-	fi 
-fi 
+#if [ $# -eq 1 ]; then
+#	if [ $1 == "stop" ]; then
+#		echo "STOP Requested"
+#		# Kill the control GUI if it's running
+#		if [ ! -z $ednaPID ]; then
+#			echo "Killing edna app"
+#			sudo kill -9 $ednaPID
+#		else
+#			echo "edna not running"
+#		fi 
+#		exit 
+#	fi 
+#fi 
 #
 #=================================================================================
 #Kill running apps 
 #=================================================================================
-./runeDNA stop 
+#./runeDNA stop 
 
 #=================================================================================
 #Run app
 #=================================================================================
 echo " --- RUN BOTTOM NODE ---"
-python2 ednaMain.py $config &
+python3 ednaMain.py $config &

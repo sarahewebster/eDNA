@@ -54,27 +54,37 @@ DefaultLogLevel = INFO
 # Main app(s)
 ednaHandler = INFO
 #=============== eDNA Communications Parameters ===============
-[Track]
-RunTime=3600
-RecordRate=10
+[Params]
+TotalSamples=3
+#either 0 or 1 (Should always be 1, unless otherwise specified)
+StartSample=1
+ADCAddr=48
+ADCBus=1
 
-#set GPIO pins
-Flow=22
+#-----------------------------------------------------
+[SystemCheck]
+#num of samples to check for outliers 
+CheckAvgSamples=10
+StDevParam=2
 
-#peristaltic pump
-WaterPump=21
-SoluPump=12
-
-#PinchValveGPIO= 3
-
-#green LED
-Valve1=20 
-Valve2=19
+#-----------------------------------------------------
+[Valves]
+Valve1En=27
+Valve1=24
+Valve1Gnd=25
+Valve2En=23
+Valve2=18
+Valve2Gnd=22
+Valve3En=17
 Valve3=16
-Valve4=13
+Valve3Gnd=19
+Valve4En=6
+Valve4=5
+Valve4Gnd=4
 
 #-----------------------------------------------------
 [FlowSensor]
+Flow=20
 #rate of counts (L/min)
 RateCnt=0     
 #total counts (total liters)      
@@ -90,24 +100,75 @@ LastGpio=2
 
 #total liters to check for at one time 
 TargetWaterLiters=.2
-TargetSoluLiters=.1
+TargetSoluLiters=.01
 
 PumpWTime = 30
-PumpSTime = 10
+PumpSTime = 20
+
+DevParam = 2
+CheckAvgSamples = 10 
+RecordRate = 4
+#-----------------------------------------------------
+[Motor]
+sampleMotor=13
+sampleMotorHz=100
+
+ethanolMotor=12
+ethanolMotorHz=100
+
 #-----------------------------------------------------
 [PressureSensor]
+
 #pressure sensor parameters(L)
-TargetDepth1=10
-TargetDepth2=20
-TargetDepth3=30
+TargetDepth1=1
+TargetDepth2=2
+TargetDepth3=3
 DepthError=2
+recordRate=4
+DevParam = 2
+CheckAvgSamples=10
 
-#PROGRAMMING PARAMETERS 
-#time sleep 
-Sleep=.25
+DepthCh=0
+DiffCh=1
 
+#1/3 = .33
+#2/3 = .66
+gain=0.66
 
+#psi
+maxDiffPress=12
+#-----------------------------------------------------
+[CurrentSensor]
+runTime=3600
+recordRate=4
+sleepTime=.25
+shuntOhms = 0.1
+maxCurrentExpected = 2.0
 
-
+[Battery]
+I2Cbus=1
+BattAddr=0x0b
+BattVolt=0x00
+BattCurrent=0x0A
+BattSOC=0x0e
+CurrentPeak=2
 
 # -------------------------------------------------------------------
+[Prime]
+
+RunTime=30
+
+# -------------------------------------------------------------------
+[LED]
+ledGPIO=21
+#start blinks 
+StartDC=10
+StartNumBlinks=4
+count=0
+
+#checking depth 
+DepthDC=50
+
+#end led status 
+SuccessStatusDC=10
+UnsuccessStatusDC=80
