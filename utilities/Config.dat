@@ -1,0 +1,174 @@
+###############################################################
+# Configuration data file for the bottom node application.
+#
+# This is an "INI" file format, with "sections" which include
+# individual key=value pairs.
+#
+# Notes:
+#
+# - Sections are delineated by names within [SquareBrackets]
+#
+# - You can use the same name for a value in different
+#   sections and they will be maintained separately.
+#
+# - Anything to the right of the "#" sign is ignored, either
+#   an entire line or the tail end.
+#
+# - You can "parameterize" a variable by declaring it at
+#   the beginning of the file prefixed with "$"
+#   This allows you to define - once - a value which may
+#   need to be referred to repeatedly. E.G.:
+#     $MyParameter = 10
+#   Then later in the file refer to this variable:
+#     MyValue = $MyParameter
+#   Note that parameterized variables MUST be declared before
+#   ANY data section.
+#
+###############################################################
+
+#### Common variable usage ####
+
+$BASEDIR = /home/pi/eDNA
+
+#========================= System Parameters ====================
+[System]
+#where to put logs 
+LogDir = $BASEDIR/logs
+
+# ========================== Logging Parameters =================
+[Loggers]
+
+# Set the default logging level.
+# This is used in any module which does not specify a level
+DefaultLogLevel = INFO
+
+# Set log level for individual loggers.
+# This overrides the default log level specified above.
+# The names here must match those in the code at lines that 
+# look like:
+#  _myLogger = new Logger("TheLoggerName")
+# For example, in the CameraCalibrator class we might have 
+# a line like:
+#  _myLogger = new Logger("CameraCalibrator")
+
+# Main app(s)
+ednaHandler = INFO
+#=============== eDNA Communications Parameters ===============
+[Params]
+TotalSamples=3
+#either 0 or 1 (Should always be 1, unless otherwise specified)
+StartSample=1
+ADCAddr=48
+ADCBus=1
+
+#-----------------------------------------------------
+[SystemCheck]
+#num of samples to check for outliers 
+CheckAvgSamples=10
+StDevParam=2
+
+#-----------------------------------------------------
+[Valves]
+Valve1En=27
+Valve1=24
+Valve1Gnd=25
+Valve2En=23
+Valve2=18
+Valve2Gnd=22
+Valve3En=17
+Valve3=16
+Valve3Gnd=19
+Valve4En=6
+Valve4=5
+Valve4Gnd=4
+
+#-----------------------------------------------------
+[FlowSensor]
+Flow=20
+#rate of counts (L/min)
+RateCnt=0     
+#total counts (total liters)      
+TotCnt=0        
+#initialize time    
+TimeStart=0    
+#pulses to liters constant 
+#based on testing should be .0001323  
+Constant=0.01323   
+        
+#last state 0 or 1 or other?                
+LastGpio=2                              
+
+#total liters to check for at one time 
+TargetWaterLiters=.2
+TargetSoluLiters=.01
+
+PumpWTime = 30
+PumpSTime = 20
+
+DevParam = 2
+CheckAvgSamples = 10 
+RecordRate = 4
+#-----------------------------------------------------
+[Motor]
+sampleMotor=13
+sampleMotorHz=100
+
+ethanolMotor=12
+ethanolMotorHz=100
+
+#-----------------------------------------------------
+[PressureSensor]
+
+#pressure sensor parameters(L)
+TargetDepth1=1
+TargetDepth2=2
+TargetDepth3=3
+DepthError=2
+recordRate=4
+DevParam = 2
+CheckAvgSamples=10
+
+DepthCh=0
+DiffCh=1
+
+#1/3 = .33
+#2/3 = .66
+gain=0.66
+
+#psi
+maxDiffPress=12
+#-----------------------------------------------------
+[CurrentSensor]
+runTime=3600
+recordRate=4
+sleepTime=.25
+shuntOhms = 0.1
+maxCurrentExpected = 2.0
+
+[Battery]
+I2Cbus=1
+BattAddr=0x0b
+BattVolt=0x00
+BattCurrent=0x0A
+BattSOC=0x0e
+CurrentPeak=2
+
+# -------------------------------------------------------------------
+[Prime]
+
+RunTime=30
+
+# -------------------------------------------------------------------
+[LED]
+ledGPIO=21
+#start blinks 
+StartDC=10
+StartNumBlinks=4
+count=0
+
+#checking depth 
+DepthDC=50
+
+#end led status 
+SuccessStatusDC=10
+UnsuccessStatusDC=80
