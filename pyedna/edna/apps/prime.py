@@ -5,7 +5,7 @@
 import sys
 import argparse
 import time
-from typing import Calable, Tuple
+from typing import Callable, Tuple
 from contextlib import contextmanager
 import RPi.GPIO as GPIO
 import Adafruit_ADS1x15
@@ -31,6 +31,7 @@ def prime_cycle(vsamp: Valve, veth: Valve, motor: int,
                     psi, ok = checkpr()
                     if not ok:
                         print("Warning max pressure exceeded: {.2f} psi".format(psi))
+                    time.sleep(0.5)
 
 
 def main():
@@ -60,13 +61,14 @@ def main():
         print("Valve number must be between 1 and 3", file=sys.stderr)
         sys.exit(1)
 
+    # eDNA uses the Broadcom SOC pin numbering scheme
+    GPIO.setmode(GPIO.BCM)
     try:
         adc = Adafruit_ADS1x15.ADS1115(address=0x48,
                                        busnum=cfg.get_int('Adc', 'Bus'))
         pr_chan = cfg.get_int('Pressure.Filter', 'Chan')
         pr_gain = cfg.get_float('Pressure.Filter', 'Gain')
 
-        GPIO.setmode(GPIO.BCM)
         motor = cfg.get_int('Motor.Sample', 'Enable')
         GPIO.setup(motor, GPIO.OUT)
 
@@ -80,13 +82,17 @@ def main():
                           cfg.get_int('Valve.Ethanol', 'Gnd'))
     except BadEntry as e:
         print(str(e), file=sys.stderr)
+        GPIO.cleanup()
         sys.exit(2)
 
     def checkpr():
         psi = read_pressure(adc, pr_chan, gain=pr_gain)
         return psi, psi < args.prmax
 
-    prime_cycle(sample_valve, eth_valve, motor, checkpr, args.time)
+    try:
+        prime_cycle(sample_valve, eth_valve, motor, checkpr, args.time)
+    finally:
+        GPIO.cleanup()
 
 
 if __name__ == "__main__":
