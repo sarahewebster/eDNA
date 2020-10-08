@@ -30,7 +30,6 @@ class Counter(object):
         self.count = 0
         self.t0 = time.time()
         self.t = 0
-        GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.line, GPIO.IN)
         GPIO.add_event_detect(self.line, GPIO.BOTH, callback=self._cb)
         self.logger.info("Counter %s reset", self.name)
@@ -71,7 +70,6 @@ class Valve(object):
         return "Valve({:d}, {:d}, {:d})".format(self.enable, self.power, self.ground)
 
     def _setup(self):
-        GPIO.setmode(GPIO.BCM)
         GPIO.setup([self.enable, self.power, self.ground], GPIO.OUT)
 
     def open(self):
