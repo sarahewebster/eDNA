@@ -4,7 +4,10 @@
      :platform: Linux (Raspberry Pi)
      :synopsis: interface to hardware peripherals
 """
-import RPi.GPIO as GPIO # type: ignore
+try:
+    import RPi.GPIO as GPIO # type: ignore
+except ImportError:
+    import edna.mockgpio as GPIO
 import time
 import logging
 from typing import Tuple, Any
@@ -30,6 +33,7 @@ class Counter(object):
         self.line = line
         self.name = name
         self.logger = logging.getLogger("edna.counter")
+        GPIO.setup(self.line, GPIO.IN)
         self.reset()
 
     def __del__(self):
@@ -39,11 +43,13 @@ class Counter(object):
         return self.name
 
     def reset(self):
-        GPIO.remove_event_detect(self.line)
+        try:
+            GPIO.remove_event_detect(self.line)
+        except Exception:
+            pass
         self.count = 0
         self.t0 = time.time()
         self.t = 0
-        GPIO.setup(self.line, GPIO.IN)
         GPIO.add_event_detect(self.line, GPIO.BOTH, callback=self._cb)
         self.logger.info("Counter %s reset", self.name)
 
