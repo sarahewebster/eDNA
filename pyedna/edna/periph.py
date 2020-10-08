@@ -1,25 +1,39 @@
 import RPi.GPIO as GPIO
 import time
+import logging
+
+
+logging.getLogger("edna").addHandler(logging.NullHandler())
 
 
 class Counter(object):
     """
     Class to count state transitions on a GPIO input line
     """
-    def __init__(self, line):
+    def __init__(self, line: int, name: str):
         """
         @param line: GPIO line to monitor
         """
         self.line = line
+        self.name = name
+        self.logger = legging.getLogger("edna.counter")
+        self.reset()
+
+    def __del__(self):
+        GPIO.remove_event_detect(self.line)
+
+    def __str__(self):
+        return self.name
+
+    def reset(self):
+        GPIO.remove_event_detect(self.line)
         self.count = 0
         self.t0 = time.time()
         self.t = 0
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.line, GPIO.IN)
         GPIO.add_event_detect(self.line, GPIO.BOTH, callback=self._cb)
-
-    def __del__(self):
-        GPIO.remove_event_detect(self.line)
+        self.logger.info("Counter %s reset", self.name)
 
     def _cb(self):
         self.count += 1
@@ -32,7 +46,6 @@ class Counter(object):
         return self.count, self.t
 
 
-
 class Valve(object):
     """
     Class to represent a solenoid valve. This class is a Context Manager
@@ -43,7 +56,7 @@ class Valve(object):
 
     The valve will be open within the Context and closed when it exits.
     """
-    def __init__(self, enable, power, ground):
+    def __init__(self, enable: int, power: int, ground: int):
         """
         @param enable: GPIO line to select this valve
         @param power: power GPIO line
@@ -52,6 +65,10 @@ class Valve(object):
         self.enable = enable
         self.power = power
         self.ground = ground
+        self.logger = logging.getLogger("edna.valve")
+
+    def __str__(self):
+        return "Valve({:d}, {:d}, {:d})".format(self.enable, self.power, self.ground)
 
     def _setup(self):
         GPIO.setmode(GPIO.BCM)
@@ -64,6 +81,7 @@ class Valve(object):
         self._setup()
         GPIO.output(self.enable, GPIO.HIGH)
         GPIO.output([self.power, self.ground], (GPIO.HIGH, GPIO.LOW))
+        self.logger.info("%s opened", str(self))
 
     def close(self):
         """
@@ -72,6 +90,7 @@ class Valve(object):
         self._setup()
         GPIO.output(self.enable, GPIO.HIGH)
         GPIO.output([self.power, self.ground], (GPIO.LOW, GPIO.HIGH))
+        self.logger.info("%s closed", str(self))
 
     def __enter__(self):
         """
@@ -133,7 +152,7 @@ class Battery(object):
         return val[0] + val[1]*256
 
 
-def read_pressure(adc, chan, gain=2/3):
+def read_pressure(adc, chan, gain=2/3) -> float:
     """
     Read pressure from an AdaFruit ADS1x15 ADC channel and return
     the value in psia.
@@ -148,7 +167,7 @@ def read_pressure(adc, chan, gain=2/3):
     return 50.0*v - 10
 
 
-def psia_to_dbar(p):
+def psia_to_dbar(p: float):
     """
     Convert a pressure value from psia to decibars relative to the
     water surface.
