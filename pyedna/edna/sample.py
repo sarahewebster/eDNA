@@ -1,7 +1,7 @@
 """
 eDNA sampling functions
 """
-from . import periph
+from . import periph, ticker
 from collections import OrderedDict, namedtuple
 from typing import Mapping, Any, List, Callable, Tuple
 import datetime
@@ -31,39 +31,48 @@ class Datafile(object):
     def __init__(self, file):
         self.file = file
 
-    def add_record(self, event: str, data: Record, t: datetime.datetime = None):
+    def add_record(self, event: str, data: Record, ts: float = 0):
         """
-        Append a record to the file.
+        Append a record to the file. If the timestamp, ts, is zero, the
+        current time is used.
         """
-        if t is None:
+        if ts == 0:
             t = datetime.datetime.now(tz=datetime.timezone.utc)
+        else:
+            t = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
         rec = OrderedDict(t=t.isoformat(sep='T', timespec='milliseconds'),
                           event=event, data=data)
         self.file.write(json.dumps(rec) + "\n")
 
 
-def read_battery(b: periph.Battery) -> Tuple[float, float, float]:
-    try:
-        v = b.voltage()
-    except IOError:
+def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, float]:
+    """
+    Return voltage, current, and state of charge from a Smart Battery. Multiple
+    read attempts are made because the battery will return a NAK on the I2C
+    bus if it is busy (rather than simply delaying its response).
+    """
+    v, ma, soc = 0, 0, 0
+    for i in range(tries):
         try:
             v = b.voltage()
+            break
         except IOError:
-            v = 0
-    try:
-        ma = b.current()
-    except IOError:
+            time.sleep(0.1)
+
+    for i in range(tries):
         try:
             ma = b.current()
+            break
         except IOError:
-            ma = 0
-    try:
-        soc = b.charge()
-    except IOError:
+            time.sleep(0.1)
+
+    for i in range(tries):
         try:
             soc = b.charge()
+            break
         except IOError:
-            soc = 0
+            time.sleep(0.1)
+
    return v, ma, soc
 
 
@@ -95,15 +104,17 @@ def flow_monitor(df: Datafile, event: str, valve: periph.Valve, cntr: periph.Cou
     """
     period = 1./rate
     overpressure = False
+    t_stop = time.time() + stop.time
     cntr.reset()
     with valve:
-        while True:
+        for tick in ticker(period):
             counts, secs = cntr.read()
             amount = counts*scale
             pr, pr_ok = checkpr()
             depth, depth_ok = checkdepth()
             df.add_record(event, OrderedDict(elapsed=secs, amount=amount,
-                                             pr=pr, pr_ok=pr_ok, depth=depth))
+                                             pr=pr, pr_ok=pr_ok,
+                                             depth=depth), ts=tick)
             if not overpressure:
                 overpressure = not pr_ok
         for i, b in enumerate(batts):
@@ -112,8 +123,7 @@ def flow_monitor(df: Datafile, event: str, valve: periph.Valve, cntr: periph.Cou
                           OrderedDict(v=v, ma=ma, soc=soc))
         if amount >= stop.amount:
             return amount, secs, overpressure
-        if secs > stop.time:
+        if tick > t_stop:
             raise Timeout()
         if not depth_ok:
             raise DepthError()
-        time.sleep(period)
