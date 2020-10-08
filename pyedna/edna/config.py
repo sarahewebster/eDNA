@@ -1,7 +1,8 @@
 """
 Configuration file parsing.
 """
-from configparser import ConfigParser, ExtendedInterpolation
+from configparser import ConfigParser, ExtendedInterpolation, Error
+from typing import Any
 
 
 class BadEntry(Exception):
@@ -17,10 +18,16 @@ class Config(object):
     """
     Class to parse the contents of one of more INI style configuration files.
     """
-    def __init__(self, filename: str):
-        self.parser = ConfigParser(interpolation=ExtendedInterpolation)
-        with open(filename) as f:
-            self.parser.read_file(f)
+    def __init__(self, data: Any):
+        """
+        Create the parser and load the initial data. If data is either a
+        filename (string) or a file-like object.
+        """
+        self.parser = ConfigParser(interpolation=ExtendedInterpolation())
+        if isinstance(data, str):
+            self.parser.read(data)
+        else:
+            self.parser.read_file(data)
 
     def load(self, filename: str):
         """
@@ -31,20 +38,20 @@ class Config(object):
     def get_string(self, section: str, key: str) -> str:
         try:
             value = self.parser.get(section, key)
-        except configparser.Error:
+        except Error:
             raise BadEntry("/".join([section, key]))
         return value
 
     def get_int(self, section: str, key: str) -> int:
         try:
             value = self.parser.getint(section, key)
-        except configparser.Error:
+        except Error:
             raise BadEntry("/".join([section, key]))
         return value
 
     def get_float(self, section: str, key: str) -> float:
         try:
             value = self.parser.getfloat(section, key)
-        except configparser.Error:
+        except Error:
             raise BadEntry("/".join([section, key]))
         return value
