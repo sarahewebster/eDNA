@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
 """
-Configuration file parsing.
+.. module:: edna.config
+     :platform: any
+     :synopsis: eDNA configuration file parser
 """
 from configparser import ConfigParser, ExtendedInterpolation, Error
 from typing import Any

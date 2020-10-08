@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
 """
-eDNA sampling functions
+.. module:: edna.sample
+     :platform: any
+     :synopsis: eDNA data collection functions
 """
 from . import periph, ticker
 from collections import OrderedDict, namedtuple
@@ -51,7 +54,7 @@ def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, float
     read attempts are made because the battery will return a NAK on the I2C
     bus if it is busy (rather than simply delaying its response).
     """
-    v, ma, soc = 0, 0, 0
+    v, ma, soc = float(0), float(0), float(0)
     for i in range(tries):
         try:
             v = b.voltage()
@@ -61,23 +64,23 @@ def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, float
 
     for i in range(tries):
         try:
-            ma = b.current()
+            ma = float(b.current())
             break
         except IOError:
             time.sleep(0.1)
 
     for i in range(tries):
         try:
-            soc = b.charge()
+            soc = float(b.charge())
             break
         except IOError:
             time.sleep(0.1)
 
-   return v, ma, soc
+    return v, ma, soc
 
 
-def flow_monitor(df: Datafile, event: str, valve: periph.Valve, cntr: periph.Counter,
-                 scale: float, rate: float, stop: Limits,
+def flow_monitor(df: Datafile, event: str, valve: periph.Valve, fm: periph.FlowMeter,
+                 rate: float, stop: Limits,
                  checkpr: Callable[[], Tuple[float, bool]],
                  checkdepth: Callable[[], Tuple[float, bool]],
                  batts: List[periph.Battery] = []) -> Tuple[float, float, bool]:
@@ -91,25 +94,23 @@ def flow_monitor(df: Datafile, event: str, valve: periph.Valve, cntr: periph.Cou
       - stop.time exceeded; raises a Timeout exception
       - checkdepth returns _, False; raises a DepthError exception
 
-    @param df: data file
-    @param event: tag for data file records
-    @param valve: valve to open, will be closed on return
-    @param cntr: flow meter pulse counter
-    @param scale: flow meter liters per pulse
-    @param rate: flow meter sampling rate in Hz
-    @param stop: sampling stop criteria
-    @param checkpr: function to check the pressure across the filter
-    @param checkdepth: function to check the depth
-    @param batts: list of batteries to check during a sample
+    :param df: data file
+    :param event: tag for data file records
+    :param valve: valve to open, will be closed on return
+    :param fm: flow meter
+    :param rate: flow meter sampling rate in Hz
+    :param stop: sampling stop criteria
+    :param checkpr: function to check the pressure across the filter
+    :param checkdepth: function to check the depth
+    :param batts: list of batteries to check during a sample
     """
     period = 1./rate
     overpressure = False
     t_stop = time.time() + stop.time
-    cntr.reset()
+    fm.reset()
     with valve:
         for tick in ticker(period):
-            counts, secs = cntr.read()
-            amount = counts*scale
+            amount, secs = fm.amount()
             pr, pr_ok = checkpr()
             depth, depth_ok = checkdepth()
             df.add_record(event, OrderedDict(elapsed=secs, amount=amount,
@@ -117,13 +118,26 @@ def flow_monitor(df: Datafile, event: str, valve: periph.Valve, cntr: periph.Cou
                                              depth=depth), ts=tick)
             if not overpressure:
                 overpressure = not pr_ok
-        for i, b in enumerate(batts):
-            v, ma, soc = read_battery(b)
-            df.add_record("battery-"+str(i),
-                          OrderedDict(v=v, ma=ma, soc=soc))
-        if amount >= stop.amount:
-            return amount, secs, overpressure
-        if tick > t_stop:
-            raise Timeout()
-        if not depth_ok:
-            raise DepthError()
+            for i, b in enumerate(batts):
+                v, ma, soc = read_battery(b)
+                df.add_record("battery-"+str(i),
+                              OrderedDict(v=v, ma=ma, soc=soc))
+            if amount >= stop.amount:
+                break
+            if tick > t_stop:
+                raise Timeout()
+            if not depth_ok:
+                raise DepthError()
+    return amount, secs, overpressure
+
+
+def collect(df: Datafile, valves: Tuple[periph.Valve],
+            fm: periph.FlowMeter,
+            limits: Tuple[Limits],
+            checkpr: Callable[[], Tuple[float, bool]],
+            checkdepth: Callable[[], Tuple[float, bool]],
+            batts: List[periph.Battery] = []) -> bool:
+    """
+    Run a complete eDNA sample sequence.
+    """
+    pass
