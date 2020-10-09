@@ -50,7 +50,7 @@ class Counter(object):
         self.count = 0
         self.t0 = time.time()
         self.t = 0
-        GPIO.add_event_detect(self.line, GPIO.BOTH, callback=self._cb)
+        GPIO.add_event_detect(self.line, GPIO.RISING, callback=self._cb)
         self.logger.info("Counter %s reset", self.name)
 
     def _cb(self):
@@ -65,8 +65,15 @@ class Counter(object):
 
 
 class FlowMeter(Counter):
-    def __init__(self, line: int, scale: float):
-        self.scale = scale
+    """
+    Class to implement a flow meter from a digital pulse counter.
+    """
+    def __init__(self, line: int, ppl: int):
+        """
+        :param line: GPIO line to monitor
+        :param ppl: pulses per liter
+        """
+        self.scale = 1./float(ppl)
         super().__init__(line, "flowmeter")
 
     def amount(self) -> Tuple[float, float]:
