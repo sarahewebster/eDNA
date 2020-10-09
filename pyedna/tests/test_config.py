@@ -22,11 +22,18 @@ Power=24
 Gnd=25
 [Foo]
 Bar = 2.5
+Baz = 42
+"""
+
+OVERRIDE = """
+[Foo]
+baz = 43
 """
 
 class ConfigTestCase(unittest.TestCase):
     def setUp(self):
         self.cfg = Config(StringIO(INPUT))
+        self.cfg.load(StringIO(OVERRIDE))
 
     def test_get_int(self):
         x = self.cfg.get_int('Valve.1', 'Enable')
@@ -39,6 +46,10 @@ class ConfigTestCase(unittest.TestCase):
     def test_get_float(self):
         x = self.cfg.get_float('Foo', 'Bar')
         self.assertEqual(x, 2.5)
+
+    def test_override(self):
+        x = self.cfg.get_int('Foo', 'Baz')
+        self.assertEqual(x, 43)
 
     def test_bad_key(self):
         self.assertRaises(BadEntry,

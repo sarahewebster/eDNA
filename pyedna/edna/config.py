@@ -17,7 +17,7 @@ class BadEntry(Exception):
         return "Configuration error; '{}': {}".format(self.key, self.msg)
 
 
-class Config(object):
+class Config(ConfigParser):
     """
     Class to parse the contents of one of more INI style configuration files.
     """
@@ -26,35 +26,35 @@ class Config(object):
         Create the parser and load the initial data. If data is either a
         filename (string) or a file-like object.
         """
-        self.parser = ConfigParser(interpolation=ExtendedInterpolation())
-        if isinstance(data, str):
-            self.parser.read(data)
-        else:
-            self.parser.read_file(data)
+        super().__init__(interpolation=ExtendedInterpolation())
+        self.load(data)
 
-    def load(self, filename: str):
+    def load(self, data: Any):
         """
         Parse an additional configuration file.
         """
-        self.parser.read([filename])
+        if isinstance(data, str):
+            self.read(data)
+        else:
+            self.read_file(data)
 
     def get_string(self, section: str, key: str) -> str:
         try:
-            value = self.parser.get(section, key)
+            value = self.get(section, key)
         except Error:
             raise BadEntry("/".join([section, key]))
         return value
 
     def get_int(self, section: str, key: str) -> int:
         try:
-            value = self.parser.getint(section, key)
+            value = self.getint(section, key)
         except Error:
             raise BadEntry("/".join([section, key]))
         return value
 
     def get_float(self, section: str, key: str) -> float:
         try:
-            value = self.parser.getfloat(section, key)
+            value = self.getfloat(section, key)
         except Error:
             raise BadEntry("/".join([section, key]))
         return value
