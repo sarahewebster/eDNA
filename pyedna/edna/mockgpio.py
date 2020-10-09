@@ -6,7 +6,7 @@ from . import ticker
 import threading
 import logging
 from collections import namedtuple
-from typing import Callable, Union, List, Dict, TypedDict, Any
+from typing import Callable, Union, List, Dict, TypedDict, Any, Tuple
 
 
 logging.getLogger("gpio").addHandler(logging.NullHandler())
@@ -94,14 +94,18 @@ def setup(pin: Union[int, List[int]], ptype: int):
             _states[p] = State(val=0, type=ptype, thread=None, ev=None)
 
 
-def output(pin: Union[int, List[int]], val: int):
+def output(pin: Union[int, List[int]], val: Union[int, Tuple[int]]):
     check_pin(pin, OUT)
     if isinstance(pin, int):
         _states[pin].val = val
     else:
-        for p in pin:
-            _states[p].val = val
-    logging.getLogger("gpio").info("Output %d on %r", val, pin)
+        if isinstance(val, int):
+            vals = tuple(val)
+        else:
+            vals = val
+        for p, v in zip(pin, vals):
+            _states[p].val = v
+    logging.getLogger("gpio").info("Output %r on %r", val, pin)
 
 
 def input(pin: int) -> int:
