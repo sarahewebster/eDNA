@@ -97,10 +97,10 @@ def setup(pin: Union[int, List[int]], ptype: int):
 def output(pin: Union[int, List[int]], val: Union[int, Tuple[int]]):
     check_pin(pin, OUT)
     if isinstance(pin, int):
-        _states[pin].val = val
+        _states[pin].val = val # type: ignore[assignment]
     else:
         if isinstance(val, int):
-            vals = tuple(val)
+            vals = (val,)
         else:
             vals = val
         for p, v in zip(pin, vals):

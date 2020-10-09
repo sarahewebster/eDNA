@@ -11,7 +11,7 @@ from contextlib import contextmanager
 try:
     import RPi.GPIO as GPIO # type: ignore
 except ImportError:
-    import edna.mockgpio as GPIO
+    import edna.mockgpio as GPIO # type: ignore
 try:
     from Adafruit_ADS1x15 import ADS1115 # type: ignore
 except ImportError:

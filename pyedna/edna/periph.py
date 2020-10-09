@@ -7,7 +7,7 @@
 try:
     import RPi.GPIO as GPIO # type: ignore
 except ImportError:
-    import edna.mockgpio as GPIO
+    import edna.mockgpio as GPIO # type: ignore
 import time
 import logging
 from typing import Tuple, Any
