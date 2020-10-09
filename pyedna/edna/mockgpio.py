@@ -4,8 +4,12 @@ Mock the Raspberry Pi GPIO interface.
 """
 from . import ticker
 import threading
+import logging
 from collections import namedtuple
 from typing import Callable, Union, List, Dict, TypedDict, Any
+
+
+logging.getLogger("gpio").addHandler(logging.NullHandler())
 
 
 class State(object):
@@ -59,7 +63,11 @@ def check_pin(pin: Union[int, List[int]], ptype: int):
 
 
 def setmode(mode: int):
-    pass
+    logging.getLogger("gpio").info("GPIO mode set")
+
+
+def cleanup(*args):
+    logging.getLogger("gpio").info("GPIO cleanup")
 
 
 def add_event_detect(pin: int, which: int, callback: Callable[[None], None]):
@@ -68,12 +76,14 @@ def add_event_detect(pin: int, which: int, callback: Callable[[None], None]):
     _states[pin].thread = Detector(callback, ev)
     _states[pin].ev = ev
     _states[pin].thread.start()
+    logging.getLogger("gpio").info("Event detector started on pin %d", pin)
 
 
 def remove_event_detect(pin: int):
     check_pin(pin, IN)
     _states[pin].ev.set()
     _states[pin].thread.join(timeout=1)
+    logging.getLogger("gpio").info("Event detector stopped on pin %d", pin)
 
 
 def setup(pin: Union[int, List[int]], ptype: int):
@@ -91,8 +101,10 @@ def output(pin: Union[int, List[int]], val: int):
     else:
         for p in pin:
             _states[p].val = val
+    logging.getLogger("gpio").info("Output %d on %r", val, pin)
 
 
 def input(pin: int) -> int:
     check_pin(pin, IN)
+    logging.getLogger("gpio").info("Read pin %d", pin)
     return _states[pin].val
