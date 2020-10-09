@@ -5,10 +5,17 @@
 import sys
 import argparse
 import time
+import logging
 from typing import Callable, Tuple
 from contextlib import contextmanager
-import RPi.GPIO as GPIO
-import Adafruit_ADS1x15
+try:
+    import RPi.GPIO as GPIO # type: ignore
+except ImportError:
+    import edna.mockgpio as GPIO
+try:
+    from Adafruit_ADS1x15 import ADS1115 # type: ignore
+except ImportError:
+    from edna.mockpr import Adc as ADS1115
 from edna.periph import Valve, read_pressure
 from edna.config import Config, BadEntry
 
@@ -30,7 +37,7 @@ def prime_cycle(vsamp: Valve, veth: Valve, motor: int,
                 while (time.time() - t0) < tlimit:
                     psi, ok = checkpr()
                     if not ok:
-                        print("Warning max pressure exceeded: {.2f} psi".format(psi))
+                        logging.warning("Max pressure exceeded: %.2f psi", psi)
                     time.sleep(0.5)
 
 
@@ -61,11 +68,15 @@ def main():
         print("Valve number must be between 1 and 3", file=sys.stderr)
         sys.exit(1)
 
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
+                        level=logging.INFO,
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        stream=sys.stderr)
+
     # eDNA uses the Broadcom SOC pin numbering scheme
     GPIO.setmode(GPIO.BCM)
     try:
-        adc = Adafruit_ADS1x15.ADS1115(address=0x48,
-                                       busnum=cfg.get_int('Adc', 'Bus'))
+        adc = ADS1115(address=0x48, busnum=cfg.get_int('Adc', 'Bus'))
         pr_chan = cfg.get_int('Pressure.Filter', 'Chan')
         pr_gain = cfg.get_float('Pressure.Filter', 'Gain')
 
