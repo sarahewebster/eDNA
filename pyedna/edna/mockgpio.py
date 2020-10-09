@@ -30,13 +30,16 @@ OUT = 1
 IN = 0
 HIGH = 1
 LOW = 0
+FALLING = 0
+RISING = 1
 BOTH = 2
 
+detector_freq: float = 10
 
 class Detector(threading.Thread):
-    def __init__(self, cb: Callable[[None], None], ev: threading.Event, interval: float = 0.1):
+    def __init__(self, cb: Callable[[None], None], ev: threading.Event):
         self.cb = cb
-        self.interval = interval
+        self.interval = 1./detector_freq
         self.ev = ev
         super().__init__()
         self.daemon = True
