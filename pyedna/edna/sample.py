@@ -6,10 +6,11 @@
 """
 from . import periph, ticker
 from collections import OrderedDict, namedtuple
-from typing import Mapping, Any, List, Callable, Tuple
+from typing import Mapping, Any, List, Callable, Tuple, Optional
 import datetime
 import json
 import time
+import logging
 
 
 # Type hint for data records
@@ -48,13 +49,13 @@ class Datafile(object):
         self.file.write(json.dumps(rec) + "\n")
 
 
-def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, float]:
+def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, int]:
     """
     Return voltage, current, and state of charge from a Smart Battery. Multiple
     read attempts are made because the battery will return a NAK on the I2C
     bus if it is busy (rather than simply delaying its response).
     """
-    v, ma, soc = float(0), float(0), float(0)
+    v, a, soc = float(0), float(0), int(0)
     for i in range(tries):
         try:
             v = b.voltage()
@@ -64,26 +65,26 @@ def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, float
 
     for i in range(tries):
         try:
-            ma = float(b.current())
+            a = b.current()
             break
         except IOError:
             time.sleep(0.1)
 
     for i in range(tries):
         try:
-            soc = float(b.charge())
+            soc = b.charge()
             break
         except IOError:
             time.sleep(0.1)
 
-    return v, ma, soc
+    return v, a, soc
 
 
-def flow_monitor(df: Datafile, event: str, valve: periph.Valve, fm: periph.FlowMeter,
+def flow_monitor(df: Optional[Datafile], event: str,
+                 valve: periph.Valve, fm: periph.FlowMeter,
                  rate: float, stop: Limits,
                  checkpr: Callable[[], Tuple[float, bool]],
-                 checkdepth: Callable[[], Tuple[float, bool]],
-                 batts: List[periph.Battery] = []) -> Tuple[float, float, bool]:
+                 checkdepth: Callable[[], Tuple[float, bool]]) -> Tuple[float, float, bool]:
     """
     Open a valve and run a flow meter until the requested amount of fluid is
     collected (stop.amount) or an error condition is met. The return value
@@ -94,7 +95,7 @@ def flow_monitor(df: Datafile, event: str, valve: periph.Valve, fm: periph.FlowM
       - stop.time exceeded; raises a Timeout exception
       - checkdepth returns _, False; raises a DepthError exception
 
-    :param df: data file
+    :param df: data file or None
     :param event: tag for data file records
     :param valve: valve to open, will be closed on return
     :param fm: flow meter
@@ -102,7 +103,6 @@ def flow_monitor(df: Datafile, event: str, valve: periph.Valve, fm: periph.FlowM
     :param stop: sampling stop criteria
     :param checkpr: function to check the pressure across the filter
     :param checkdepth: function to check the depth
-    :param batts: list of batteries to check during a sample
     """
     period = 1./rate
     overpressure = False
@@ -113,26 +113,29 @@ def flow_monitor(df: Datafile, event: str, valve: periph.Valve, fm: periph.FlowM
             amount, secs = fm.amount()
             pr, pr_ok = checkpr()
             depth, depth_ok = checkdepth()
-            df.add_record(event, OrderedDict(elapsed=secs, amount=amount,
-                                             pr=pr, pr_ok=pr_ok,
-                                             depth=depth), ts=tick)
+            if df is not None:
+                df.add_record(event, OrderedDict(elapsed=secs, amount=amount,
+                                                 pr=pr, pr_ok=pr_ok,
+                                                 depth=depth), ts=tick)
             if not overpressure:
                 overpressure = not pr_ok
-            for i, b in enumerate(batts):
-                v, ma, soc = read_battery(b)
-                df.add_record("battery-"+str(i),
-                              OrderedDict(v=v, ma=ma, soc=soc))
             if amount >= stop.amount:
                 break
             if tick > t_stop:
-                raise Timeout()
+                break
             if not depth_ok:
                 raise DepthError()
     return amount, secs, overpressure
 
 
-def collect(df: Datafile, valves: Tuple[periph.Valve],
+SampleIdx: int = 0
+EthanolIdx: int = 1
+
+def collect(df: Datafile, index: int,
+            pumps: Tuple[int],
+            valves: Tuple[periph.Valve],
             fm: periph.FlowMeter,
+            rate: float,
             limits: Tuple[Limits],
             checkpr: Callable[[], Tuple[float, bool]],
             checkdepth: Callable[[], Tuple[float, bool]],
@@ -140,4 +143,45 @@ def collect(df: Datafile, valves: Tuple[periph.Valve],
     """
     Run a complete eDNA sample sequence.
     """
-    pass
+    logger = logging.getLogger("edna.sample")
+    logger.info("Starting sample %d", index)
+    def cb_log():
+        logger.info("Sample pump off")
+    with periph.gpio_high(pumps[SampleIdx], cb=cb_log):
+        logger.info("Sample pump on")
+        for i, b in enumerate(batts):
+            v, a, soc = read_battery(b)
+            df.add_record("battery-"+str(i),
+                          OrderedDict(v=v, a=a, soc=soc))
+        try:
+            amount, secs, ovp = flow_monitor(df, "sample."+str(index),
+                                             valves[SampleIdx], fm,
+                                             rate,
+                                             limits[SampleIdx],
+                                             checkpr,
+                                             checkdepth)
+            df.add_record("result."+str(index),
+                          OrderedDict(elapsed=secs, amount=amount, overpressure=ovp))
+        except DepthError:
+            logger.critical("Depth not maintained; sample %d aborted", index)
+            return False
+
+    with periph.gpio_high(pumps[EthanolIdx]):
+        logger.info("Ethanol pump on")
+        for i, b in enumerate(batts):
+            v, ma, soc = read_battery(b)
+            df.add_record("battery-"+str(i),
+                          OrderedDict(v=v, ma=ma, soc=soc))
+        try:
+            amount, secs, ovp = flow_monitor(None, "",
+                                             valves[EthanolIdx], fm,
+                                             rate,
+                                             limits[EthanolIdx],
+                                             checkpr,
+                                             lambda: (0.0, True))
+            if ovp:
+                logger.warning("Overpressure event during ethanol pumping")
+        except DepthError:
+            logger.exception("Unexpected Depth Error")
+    logger.info("Ethanol pump off")
+    return True

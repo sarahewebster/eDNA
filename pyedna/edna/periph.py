@@ -10,10 +10,20 @@ except ImportError:
     import edna.mockgpio as GPIO # type: ignore
 import time
 import logging
-from typing import Tuple, Any
+from typing import Tuple, Any, Callable
+from contextlib import contextmanager
 
 
 logging.getLogger("edna").addHandler(logging.NullHandler())
+
+
+@contextmanager
+def gpio_high(line: int, cb: Callable[[], None] = None):
+    GPIO.output(line, GPIO.HIGH)
+    yield
+    GPIO.output(line, GPIO.LOW)
+    if cb is not None:
+        cb()
 
 
 class Counter(object):
@@ -166,9 +176,9 @@ class Battery(object):
         val = self.bus.read_i2c_block_data(self.bus_addr, self.msgs["voltage"], 2)
         return float((val[0] + val[1]*256.)/1000.)
 
-    def current(self) -> int:
+    def current(self) -> float:
         """
-        Return battery current in mA. A positive value means the battery
+        Return battery current in amps. A positive value means the battery
         is charging, negative means discharging.
         """
         val = self.bus.read_i2c_block_data(self.bus_addr, self.msgs["current"], 2)
@@ -176,7 +186,7 @@ class Battery(object):
         # Convert to a signed 16-bit value
         if ma & 0x8000:
             ma = ma - 0x10000
-        return ma
+        return float(ma)/1000.
 
     def charge(self) -> int:
         """
