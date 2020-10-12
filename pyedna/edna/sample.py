@@ -81,10 +81,12 @@ def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, int]:
 
 
 def flow_monitor(df: Optional[Datafile], event: str,
+                 pump: int,
                  valve: periph.Valve, fm: periph.FlowMeter,
                  rate: float, stop: Limits,
                  checkpr: Callable[[], Tuple[float, bool]],
-                 checkdepth: Callable[[], Tuple[float, bool]]) -> Tuple[float, float, bool]:
+                 checkdepth: Callable[[], Tuple[float, bool]],
+                 batts: List[periph.Battery] = []) -> Tuple[float, float, bool]:
     """
     Open a valve and run a flow meter until the requested amount of fluid is
     collected (stop.amount) or an error condition is met. The return value
@@ -97,6 +99,7 @@ def flow_monitor(df: Optional[Datafile], event: str,
 
     :param df: data file or None
     :param event: tag for data file records
+    :param pump: pump motor GPIO line
     :param valve: valve to open, will be closed on return
     :param fm: flow meter
     :param rate: flow meter sampling rate in Hz
@@ -104,27 +107,38 @@ def flow_monitor(df: Optional[Datafile], event: str,
     :param checkpr: function to check the pressure across the filter
     :param checkdepth: function to check the depth
     """
+    logger = logging.getLogger("edna.sample")
     period = 1./rate
     overpressure = False
     t_stop = time.time() + stop.time
     fm.reset()
     with valve:
-        for tick in ticker(period):
-            amount, secs = fm.amount()
-            pr, pr_ok = checkpr()
-            depth, depth_ok = checkdepth()
+        logger.info("Starting pump %d", pump)
+        def cb_log():
+            logger.info("Stopping pump %d", pump)
+        with periph.gpio_high(pump, cb=cb_log):
+            for tick in ticker(period):
+                amount, secs = fm.amount()
+                pr, pr_ok = checkpr()
+                depth, depth_ok = checkdepth()
+                if df is not None:
+                    df.add_record(event, OrderedDict(elapsed=secs, amount=amount,
+                                                     pr=pr, pr_ok=pr_ok,
+                                                     depth=depth), ts=tick)
+                if not overpressure:
+                    overpressure = not pr_ok
+                if amount >= stop.amount:
+                    break
+                if tick > t_stop:
+                    break
+                if not depth_ok:
+                    raise DepthError()
             if df is not None:
-                df.add_record(event, OrderedDict(elapsed=secs, amount=amount,
-                                                 pr=pr, pr_ok=pr_ok,
-                                                 depth=depth), ts=tick)
-            if not overpressure:
-                overpressure = not pr_ok
-            if amount >= stop.amount:
-                break
-            if tick > t_stop:
-                break
-            if not depth_ok:
-                raise DepthError()
+                for i, b in enumerate(batts):
+                    v, a, soc = read_battery(b)
+                    df.add_record("battery-"+str(i),
+                                  OrderedDict(v=v, a=a, soc=soc))
+
     return amount, secs, overpressure
 
 
@@ -145,43 +159,33 @@ def collect(df: Datafile, index: int,
     """
     logger = logging.getLogger("edna.sample")
     logger.info("Starting sample %d", index)
-    def cb_log():
-        logger.info("Sample pump off")
-    with periph.gpio_high(pumps[SampleIdx], cb=cb_log):
-        logger.info("Sample pump on")
-        for i, b in enumerate(batts):
-            v, a, soc = read_battery(b)
-            df.add_record("battery-"+str(i),
-                          OrderedDict(v=v, a=a, soc=soc))
-        try:
-            amount, secs, ovp = flow_monitor(df, "sample."+str(index),
-                                             valves[SampleIdx], fm,
-                                             rate,
-                                             limits[SampleIdx],
-                                             checkpr,
-                                             checkdepth)
-            df.add_record("result."+str(index),
-                          OrderedDict(elapsed=secs, amount=amount, overpressure=ovp))
-        except DepthError:
-            logger.critical("Depth not maintained; sample %d aborted", index)
-            return False
+    try:
+        amount, secs, ovp = flow_monitor(df, "sample."+str(index),
+                                         pumps[SampleIdx],
+                                         valves[SampleIdx], fm,
+                                         rate,
+                                         limits[SampleIdx],
+                                         checkpr,
+                                         checkdepth)
+        df.add_record("result."+str(index),
+                      OrderedDict(elapsed=secs, amount=amount, overpressure=ovp))
+        if ovp:
+            logger.warning("Overpressure event during sample pumping")
+    except DepthError:
+        logger.critical("Depth not maintained; sample %d aborted", index)
+        return False
 
-    with periph.gpio_high(pumps[EthanolIdx]):
-        logger.info("Ethanol pump on")
-        for i, b in enumerate(batts):
-            v, ma, soc = read_battery(b)
-            df.add_record("battery-"+str(i),
-                          OrderedDict(v=v, ma=ma, soc=soc))
-        try:
-            amount, secs, ovp = flow_monitor(None, "",
-                                             valves[EthanolIdx], fm,
-                                             rate,
-                                             limits[EthanolIdx],
-                                             checkpr,
-                                             lambda: (0.0, True))
-            if ovp:
-                logger.warning("Overpressure event during ethanol pumping")
-        except DepthError:
-            logger.exception("Unexpected Depth Error")
-    logger.info("Ethanol pump off")
+    try:
+        amount, secs, ovp = flow_monitor(None, "",
+                                         pumps[EthanolIdx],
+                                         valves[EthanolIdx], fm,
+                                         rate,
+                                         limits[EthanolIdx],
+                                         checkpr,
+                                         lambda: (0.0, True))
+        if ovp:
+            logger.warning("Overpressure event during ethanol pumping")
+    except DepthError:
+        logger.exception("Unexpected Depth Error")
+
     return True
