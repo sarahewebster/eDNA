@@ -160,32 +160,31 @@ def collect(df: Datafile, index: int,
     logger = logging.getLogger("edna.sample")
     logger.info("Starting sample %d", index)
     try:
-        amount, secs, ovp = flow_monitor(df, "sample."+str(index),
-                                         pumps[SampleIdx],
-                                         valves[SampleIdx], fm,
-                                         rate,
-                                         limits[SampleIdx],
-                                         checkpr,
-                                         checkdepth)
-        df.add_record("result."+str(index),
-                      OrderedDict(elapsed=secs, amount=amount, overpressure=ovp))
-        if ovp:
+        vwater, w_secs, w_ovp = flow_monitor(df, "sample."+str(index),
+                                             pumps[SampleIdx],
+                                             valves[SampleIdx], fm,
+                                             rate,
+                                             limits[SampleIdx],
+                                             checkpr,
+                                             checkdepth, batts)
+
+        if w_ovp:
             logger.warning("Overpressure event during sample pumping")
     except DepthError:
         logger.critical("Depth not maintained; sample %d aborted", index)
         return False
 
-    try:
-        amount, secs, ovp = flow_monitor(None, "",
-                                         pumps[EthanolIdx],
-                                         valves[EthanolIdx], fm,
-                                         rate,
-                                         limits[EthanolIdx],
-                                         checkpr,
-                                         lambda: (0.0, True))
-        if ovp:
-            logger.warning("Overpressure event during ethanol pumping")
-    except DepthError:
-        logger.exception("Unexpected Depth Error")
+    vethanol, e_secs, e_ovp = flow_monitor(None, "",
+                                           pumps[EthanolIdx],
+                                           valves[EthanolIdx], fm,
+                                           rate,
+                                           limits[EthanolIdx],
+                                           checkpr,
+                                           lambda: (0.0, True), batts)
+    if e_ovp:
+        logger.warning("Overpressure event during ethanol pumping")
 
+    df.add_record("result."+str(index),
+                  OrderedDict(elapsed=w_secs+e_secs, vwater=vwater, vethanol=vethanol,
+                              overpressure=(w_ovp or e_ovp)))
     return True
