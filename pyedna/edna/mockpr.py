@@ -2,7 +2,7 @@
 """
 Mock the eDNA pressure sensors
 """
-from random import uniform
+from random import normalvariate
 
 
 def volts_to_counts(v: float, gain: float) -> int:
@@ -16,5 +16,8 @@ class Adc(object):
 
     def read_adc(self, chan: int, gain: float) -> int:
         # 0.4v is approximately 10 psi
-        v = uniform(0.2, 0.5)
+        if chan == 1:
+            v = normalvariate(0.4, 0.025)
+        else:
+            v = normalvariate(1.2, 0.025)
         return volts_to_counts(v, gain)
