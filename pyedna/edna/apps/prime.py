@@ -7,6 +7,7 @@ import argparse
 import time
 import logging
 from typing import Callable, Tuple
+from functools import partial
 from contextlib import contextmanager
 try:
     import RPi.GPIO as GPIO # type: ignore
@@ -16,6 +17,7 @@ try:
     from Adafruit_ADS1x15 import ADS1115 # type: ignore
 except ImportError:
     from edna.mockpr import Adc as ADS1115
+from edna import ticker
 from edna.periph import Valve, read_pressure, gpio_high
 from edna.config import Config, BadEntry
 
@@ -27,11 +29,22 @@ def prime_cycle(vsamp: Valve, veth: Valve, motor: int,
     with veth:
         with vsamp:
             with gpio_high(motor):
-                while (time.time() - t0) < tlimit:
+                for tick in ticker(0.5):
+                    if (tick - t0) > tlimit:
+                        break
                     psi, ok = checkpr()
                     if not ok:
                         logging.warning("Max pressure exceeded: %.2f psi", psi)
-                    time.sleep(0.5)
+
+
+def checkpr(adc: ADS1115, chan: int,
+            gain: float, prmax: float) -> Tuple[float, bool]:
+    """
+    Read the pressure across the filter and check that the value
+    is less than prmax.
+    """
+    psi = read_pressure(adc, chan, gain=gain)
+    return psi, psi < prmax
 
 
 def main():
@@ -89,12 +102,10 @@ def main():
         GPIO.cleanup()
         sys.exit(2)
 
-    def checkpr():
-        psi = read_pressure(adc, pr_chan, gain=pr_gain)
-        return psi, psi < args.prmax
-
     try:
-        prime_cycle(sample_valve, eth_valve, motor, checkpr, args.time)
+        prime_cycle(sample_valve, eth_valve, motor,
+                    partial(checkpr, adc, pr_chan, pr_gain, args.prmax),
+                    args.time)
     finally:
         GPIO.cleanup()
 
