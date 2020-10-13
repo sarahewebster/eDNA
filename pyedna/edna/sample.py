@@ -20,10 +20,6 @@ Record = Mapping[str, Any]
 Limits = namedtuple('Limits', ['time', 'amount'])
 
 
-class Timeout(Exception):
-    pass
-
-
 class DepthError(Exception):
     pass
 
@@ -88,13 +84,13 @@ def flow_monitor(df: Optional[Datafile], event: str,
                  checkdepth: Callable[[], Tuple[float, bool]],
                  batts: List[periph.Battery] = []) -> Tuple[float, float, bool]:
     """
-    Open a valve and run a flow meter until the requested amount of fluid is
-    collected (stop.amount) or an error condition is met. The return value
-    is a tuple of; total fluid amount in liters, elapsed time in seconds, and
-    a boolean flag which is True if an overpressure condition was detected.
+    Open a valve and run a flow meter until the requested amount of fluid
+    is collected (stop.amount), the time limit (stop.time) is exceeded, or
+    an error condition is met. The return value is a tuple of; total fluid
+    amount in liters, elapsed time in seconds, and a boolean flag which is
+    True if an overpressure condition was detected.
 
     Errors:
-      - stop.time exceeded; raises a Timeout exception
       - checkdepth returns _, False; raises a DepthError exception
 
     :param df: data file or None
@@ -106,6 +102,7 @@ def flow_monitor(df: Optional[Datafile], event: str,
     :param stop: sampling stop criteria
     :param checkpr: function to check the pressure across the filter
     :param checkdepth: function to check the depth
+
     """
     logger = logging.getLogger("edna.sample")
     period = 1./rate
