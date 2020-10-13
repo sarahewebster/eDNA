@@ -16,15 +16,8 @@ try:
     from Adafruit_ADS1x15 import ADS1115 # type: ignore
 except ImportError:
     from edna.mockpr import Adc as ADS1115
-from edna.periph import Valve, read_pressure
+from edna.periph import Valve, read_pressure, gpio_high
 from edna.config import Config, BadEntry
-
-
-@contextmanager
-def gpio_high(line: int):
-    GPIO.output(line, GPIO.HIGH)
-    yield
-    GPIO.output(line, GPIO.LOW)
 
 
 def prime_cycle(vsamp: Valve, veth: Valve, motor: int,
