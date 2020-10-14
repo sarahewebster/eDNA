@@ -17,7 +17,7 @@ import logging
 Record = Mapping[str, Any]
 
 # flow_monitor stopping criteria
-Limits = namedtuple('Limits', ['time', 'amount'])
+FlowLimits = namedtuple('FlowLimits', ['time', 'amount'])
 
 
 class DepthError(Exception):
@@ -79,7 +79,7 @@ def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, int]:
 def flow_monitor(df: Optional[Datafile], event: str,
                  pump: int,
                  valve: periph.Valve, fm: periph.FlowMeter,
-                 rate: float, stop: Limits,
+                 rate: float, stop: FlowLimits,
                  checkpr: Callable[[], Tuple[float, bool]],
                  checkdepth: Callable[[], Tuple[float, bool]],
                  batts: List[periph.Battery] = []) -> Tuple[float, float, bool]:
@@ -134,7 +134,7 @@ def flow_monitor(df: Optional[Datafile], event: str,
                 for i, b in enumerate(batts):
                     v, a, soc = read_battery(b)
                     df.add_record("battery-"+str(i),
-                                  OrderedDict(v=v, a=a, soc=soc))
+                                  OrderedDict(v=v, a=a, soc=soc), ts=tick)
 
     return amount, secs, overpressure
 
@@ -147,7 +147,7 @@ def collect(df: Datafile, index: int,
             valves: Tuple[periph.Valve],
             fm: periph.FlowMeter,
             rate: float,
-            limits: Tuple[Limits],
+            limits: Tuple[FlowLimits],
             checkpr: Callable[[], Tuple[float, bool]],
             checkdepth: Callable[[], Tuple[float, bool]],
             batts: List[periph.Battery] = []) -> bool:
@@ -185,3 +185,29 @@ def collect(df: Datafile, index: int,
                   OrderedDict(elapsed=w_secs+e_secs, vwater=vwater, vethanol=vethanol,
                               overpressure=(w_ovp or e_ovp)))
     return True
+
+
+def seekdepth(df: Datafile,
+              chkdepth: Callable[[], Tuple[float, bool]],
+              rate: float,
+              tlimit: float,
+              batts: List[periph.Battery] = []) -> Tuple[float, bool]:
+    """
+    Wait for the system to reach a specified depth band. Return (depth,
+    True) if the target depth was reached or (depth, False) if the time
+    limit was exceeded.
+    """
+    t0 = time.time()
+    period = 1./rate
+    for tick in ticker(period):
+        depth, ok = chkdepth()
+        df.add_record("depth", OrderedDict(depth=depth), ts=tick)
+        for i, b in enumerate(batts):
+            v, a, soc = read_battery(b)
+            df.add_record("battery-"+str(i),
+                          OrderedDict(v=v, a=a, soc=soc), ts=tick)
+        if ok:
+            break
+        if (tick - t0) > tlimit:
+            return depth, False
+    return depth, True
