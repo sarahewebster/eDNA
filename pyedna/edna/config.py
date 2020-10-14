@@ -46,9 +46,10 @@ class Config(ConfigParser):
         return value
 
     def get_int(self, section: str, key: str) -> int:
+        s = self.get_string(section, key)
         try:
-            value = self.getint(section, key)
-        except Error:
+            value = int(s, base=0)
+        except ValueError:
             raise BadEntry("/".join([section, key]))
         return value
 

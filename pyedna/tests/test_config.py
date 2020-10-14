@@ -23,6 +23,8 @@ Gnd=25
 [Foo]
 Bar = 2.5
 Baz = 42
+[Adc]
+Addr=0x48
 """
 
 OVERRIDE = """
@@ -38,6 +40,10 @@ class ConfigTestCase(unittest.TestCase):
     def test_get_int(self):
         x = self.cfg.get_int('Valve.1', 'Enable')
         self.assertEqual(x, 27)
+
+    def test_get_int_hex(self):
+        x = self.cfg.get_int('Adc', 'Addr')
+        self.assertEqual(x, 0x48)
 
     def test_get_str(self):
         s = self.cfg.get_string('System', 'LogDir')
