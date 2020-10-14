@@ -143,11 +143,11 @@ SampleIdx: int = 0
 EthanolIdx: int = 1
 
 def collect(df: Datafile, index: int,
-            pumps: Tuple[int],
-            valves: Tuple[periph.Valve],
+            pumps: Tuple[int, int],
+            valves: Tuple[periph.Valve, periph.Valve],
             fm: periph.FlowMeter,
             rate: float,
-            limits: Tuple[FlowLimits],
+            limits: Tuple[FlowLimits, FlowLimits],
             checkpr: Callable[[], Tuple[float, bool]],
             checkdepth: Callable[[], Tuple[float, bool]],
             batts: List[periph.Battery] = []) -> bool:
