@@ -119,9 +119,11 @@ def flow_monitor(df: Optional[Datafile], event: str,
                 pr, pr_ok = checkpr()
                 depth, depth_ok = checkdepth()
                 if df is not None:
-                    df.add_record(event, OrderedDict(elapsed=secs, amount=amount,
-                                                     pr=pr, pr_ok=pr_ok,
-                                                     depth=depth), ts=tick)
+                    df.add_record(event, OrderedDict(elapsed=round(secs, 3),
+                                                     amount=round(amount, 3),
+                                                     pr=round(pr, 3),
+                                                     pr_ok=pr_ok,
+                                                     depth=round(depth, 3)), ts=tick)
                 if not overpressure:
                     overpressure = not pr_ok
                 if amount >= stop.amount:
@@ -134,7 +136,8 @@ def flow_monitor(df: Optional[Datafile], event: str,
                 for i, b in enumerate(batts):
                     v, a, soc = read_battery(b)
                     df.add_record("battery-"+str(i),
-                                  OrderedDict(v=v, a=a, soc=soc), ts=tick)
+                                  OrderedDict(v=round(v, 3),
+                                              a=round(a, 3), soc=soc), ts=tick)
 
     return amount, secs, overpressure
 
@@ -182,7 +185,9 @@ def collect(df: Datafile, index: int,
         logger.warning("Overpressure event during ethanol pumping")
 
     df.add_record("result."+str(index),
-                  OrderedDict(elapsed=w_secs+e_secs, vwater=vwater, vethanol=vethanol,
+                  OrderedDict(elapsed=round(w_secs+e_secs, 3),
+                              vwater=round(vwater, 3),
+                              vethanol=round(vethanol, 3),
                               overpressure=(w_ovp or e_ovp)))
     return True
 
@@ -201,11 +206,12 @@ def seekdepth(df: Datafile,
     period = 1./rate
     for tick in ticker(period):
         depth, ok = chkdepth()
-        df.add_record("depth", OrderedDict(depth=depth), ts=tick)
+        df.add_record("depth", OrderedDict(depth=round(depth, 3)), ts=tick)
         for i, b in enumerate(batts):
             v, a, soc = read_battery(b)
             df.add_record("battery-"+str(i),
-                          OrderedDict(v=v, a=a, soc=soc), ts=tick)
+                          OrderedDict(v=round(v, 3),
+                                      a=round(a, 3), soc=soc), ts=tick)
         if ok:
             break
         if (tick - t0) > tlimit:
