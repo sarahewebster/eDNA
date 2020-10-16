@@ -17,6 +17,7 @@ try:
     import RPi.GPIO as GPIO # type: ignore
 except ImportError:
     import edna.mockgpio as GPIO # type: ignore
+    GPIO.detector_freq = 20
 try:
     from Adafruit_ADS1x15 import ADS1115 # type: ignore
 except ImportError:
@@ -75,6 +76,7 @@ def init_logging(datadir: str, id: str):
     fh.setLevel(logging.DEBUG)
 
     fmtr = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    fmtr.default_msec_format = "%s.%03d"
     ch.setFormatter(fmtr)
     fh.setFormatter(fmtr)
     logger.addHandler(fh)
@@ -83,7 +85,7 @@ def init_logging(datadir: str, id: str):
 
 def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
     logger = logging.getLogger()
-    logger.info("Starting deployment: %s", id)
+    logger.info("Starting deployment: %s", deployment.id)
 
     # Extract parameters from configuration files
     try:
@@ -151,7 +153,7 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
             logger.critical("Depth seek time limit expired. Aborting.")
             return False
 
-        logger.info("Callecting sample %d", index)
+        logger.info("Collecting sample %d", index)
         drange = (depth-deployment.depth_err, depth+deployment.depth_err)
         status = collect(df, index,
                          (pumps["Sample"], pumps["Ethanol"]),
@@ -211,6 +213,7 @@ def main() -> int:
     except Exception:
         logger.exception("Deployment aborted with an exception")
     else:
+        os.makedirs(args.outbox, exist_ok=True)
         # Archive the deployment directory to the OUTBOX
         arpath = os.path.join(args.outbox, "edna_" + deployment.id + ".tar.gz")
         logger.info("Archiving deployment directory to %s", arpath)
