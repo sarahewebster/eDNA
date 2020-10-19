@@ -38,6 +38,13 @@ jq -r -M \
    '{t: .t, ev: (.event / "."), data: .data}|select( .ev[0] == "result")|[.t, .ev[1], .data.elapsed, .data.vwater, .data.vethanol, .data.overpressure]|@csv' $infile >> $outfile
 echo "done"
 
+outfile="battery_${id}.csv"
+echo -n "Creating $outfile ... "
+echo "time,voltage,current,soc" > $outfile
+jq -r -M \
+   '{t: .t, ev: (.event / "-"), data: .data}|select( .ev[0] == "battery")|[.t, .ev[1], .data.v, .data.a, .data.soc]|@csv' $infile >> $outfile
+echo "done"
+
 outfile="depth_${id}.csv"
 echo -n "Creating $outfile ... "
 echo "time,depth" > $outfile
