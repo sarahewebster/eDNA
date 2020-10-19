@@ -115,3 +115,31 @@ def input(pin: int) -> int:
     check_pin(pin, IN)
     logging.getLogger("gpio").info("Read pin %d", pin)
     return _states[pin].val
+
+
+class PWM(object):
+    chan: int
+    rate: float
+    duty_cycle: float
+
+    def __init__(self, chan: int, freq: float):
+        self.chan = chan
+        self.rate = 1./freq
+        self.duty_cycle = 0
+        logging.getLogger("gpio").info("Enable PWM on pin %d", self.chan)
+
+    def __del__(self):
+        logging.getLogger("gpio").info("Disable PWM on pin %d", self.chan)
+
+    def ChangeFrequency(self, freq: float):
+        self.rate = 1./freq
+
+    def ChangeDutyCycle(self, dc: float):
+        self.duty_cycle = dc
+
+    def start(self, dc: float):
+        self.duty_cycle = dc
+        logging.getLogger("gpio").info("Start PWM on pin %d", self.chan)
+
+    def stop(self):
+        logging.getLogger("gpio").info("Stop PWM on pin %d", self.chan)

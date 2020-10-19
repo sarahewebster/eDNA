@@ -10,8 +10,10 @@ except ImportError:
     import edna.mockgpio as GPIO # type: ignore
 import time
 import logging
+from threading import Thread, Event
 from typing import Tuple, Any, Callable
 from contextlib import contextmanager
+from . import ticker
 
 
 logging.getLogger("edna").addHandler(logging.NullHandler())
@@ -217,3 +219,98 @@ def psia_to_dbar(p: float) -> float:
     water surface.
     """
     return (p - 14.7)*0.689476
+
+
+def sawtooth(count: int):
+    """
+    Generator to produce a sawtooth wave with amplitude 1.0
+
+    :param count: wavelength in points
+    """
+    x = 0
+    mid = float(count)/2.
+    while True:
+        if x <= mid:
+            y = float(x)/mid
+        else:
+            y = float(count - x)/mid
+        x += 1
+        if x == count:
+            x = 0
+        yield y
+
+
+class LED(object):
+    """
+    Class to control an LED attached to a GPIO line.
+    """
+    line: int
+    ctlr: GPIO.PWM
+    tid: Any
+    ev: Event
+
+    def __init__(self, line: int):
+        self.line = line
+        self.tid = None
+        self.ev = Event()
+        self.logger = logging.getLogger("edna.led")
+
+    def __del__(self):
+        self.stop_fade()
+        self.stop_blink()
+
+    def start_blink(self, period: float):
+        """
+        Start blinking the LED with a 50% duty cycle. For best results, the
+        period should be at least one second long.
+        """
+        self.ctlr = GPIO.PWM(self.line, 1./period)
+        self.ctlr.start(50)
+        self.logger.info("Start LED blinker; period = %.2fs", period)
+
+    def stop_blink(self):
+        """
+        Stop the LED blinking.
+        """
+        if self.ctlr is not None:
+            self.ctlr.stop()
+            self.ctlr = None
+            self.logger.info("Stop LED blinker")
+
+    def _fader(self, period: float):
+        rate = 0.1
+        gen = sawtooth(int(period/rate))
+        for tick in ticker(0.1):
+            y = next(gen)
+            self.ctlr.ChangeDutyCycle(y*100)
+            if self.ev.is_set():
+                break
+
+    def start_fade(self, period: float):
+        """
+        Start LED fade in/out. For best results, the period should be at
+        least 5 seconds long.
+        """
+        if self.tid is not None:
+            self.stop_fade()
+        if self.ctlr is not None:
+            self.ctlr.stop()
+        self.ctlr = GPIO.PWM(self.line, 50)
+        self.ctlr.start(0)
+        self.tid = Thread(target=self._fader,
+                          args=(period,), daemon=True)
+        self.ev.clear()
+        self.tid.start()
+        self.logger.info("Start LED fader; period = %.2fs", period)
+
+    def stop_fade(self):
+        """
+        Stop LED fade in/out
+        """
+        if self.tid is not None:
+            self.ev.set()
+            self.tid.join(timeout=2)
+            self.tid = None
+            self.ctrl.stop()
+            self.ctrl = None
+            self.logger.info("Stop LED fader")
