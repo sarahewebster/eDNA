@@ -5,7 +5,37 @@
      :synopsis: eDNA configuration file parser
 """
 from configparser import ConfigParser, ExtendedInterpolation, Error
-from typing import Any
+from typing import Any, List, Dict
+
+
+# Required keys for various sections
+valve_req: List[str] = ["enable", "power", "gnd"]
+motor_req: List[str] = ["enable"]
+pressure_req: List[str] = ["chan", "gain"]
+collect_req: List[str] = ["amount", "time"]
+sample_req: List[str] = ["depth"]
+
+
+# Required sections and keys
+required: Dict[str, List[str]] = {
+    "Valve.1": valve_req,
+    "Valve.2": valve_req,
+    "Valve.3": valve_req,
+    "Valve.Ethanol": valve_req,
+    "FlowSensor": ["input", "ppl", "rate"],
+    "Motor.Sample": motor_req,
+    "Motor.Ethanol": motor_req,
+    "Adc": ["bus", "addr"],
+    "Pressure.Env": pressure_req,
+    "Pressure.Filter": pressure_req + ["max"],
+    "LED": ["gpio"],
+    "Collect.Sample": collect_req,
+    "Collect.Ethanol": collect_req,
+    "Sample.1": sample_req,
+    "Sample.2": sample_req,
+    "Sample.3": sample_req,
+    "Deployment": ["seekerr", "deptherr", "prrate", "seektime"]
+}
 
 
 class BadEntry(Exception):
@@ -38,7 +68,24 @@ class Config(ConfigParser):
         else:
             self.read_file(data)
 
+    def validate(self) -> List[str]:
+        """
+        Verify that all required configuration entries are present, returns
+        a list of all missing entries.
+        """
+        missing = []
+        for k, vals in required.items():
+            for val in vals:
+                try:
+                    self.get_string(k, val)
+                except BadEntry:
+                    missing.append("/".join([k, val]))
+        return missing
+
     def get_string(self, section: str, key: str) -> str:
+        """
+        Return a configuration entry.
+        """
         try:
             value = self.get(section, key)
         except Error:

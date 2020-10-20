@@ -3,6 +3,7 @@ Tests for the edna.config module
 """
 from edna.config import Config, BadEntry
 import unittest
+import os.path
 from io import StringIO
 
 
@@ -61,6 +62,21 @@ class ConfigTestCase(unittest.TestCase):
         self.assertRaises(BadEntry,
                           self.cfg.get_int,
                           'Valve.5', 'Enable')
+
+
+class ValidationTest(unittest.TestCase):
+    def setUp(self):
+        path = os.path.join(os.path.dirname(__file__), "example.cfg")
+        self.cfg = Config(path)
+        self.badcfg = Config(StringIO(INPUT))
+
+    def test_validate(self):
+        missing = self.cfg.validate()
+        self.assertEqual(len(missing), 0)
+
+    def test_validate_fail(self):
+        missing = self.badcfg.validate()
+        self.assertGreater(len(missing), 0)
 
 
 if __name__ == '__main__':

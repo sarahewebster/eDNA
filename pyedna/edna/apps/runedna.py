@@ -27,7 +27,6 @@ from edna.sample import Datafile, FlowLimits, collect, seekdepth
 from edna.periph import Valve, FlowMeter, \
     read_pressure, psia_to_dbar, gpio_high
 from edna.config import Config, BadEntry
-from edna.apps.validate import validate
 
 
 PrSensor = namedtuple("PrSensor", ["chan", "gain", "prmax"])
@@ -183,7 +182,7 @@ def main() -> int:
         return 1
 
     # Validate configuration files
-    missing = validate(cfg)
+    missing = cfg.validate()
     if missing:
         print("Missing configuration entries: {}".format(";".join(missing)))
         return 1
