@@ -132,15 +132,18 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
         deployment.pr_rate = cfg.get_float('Deployment', 'PrRate')
         deployment.seek_time = cfg.get_int('Deployment', 'SeekTime')
 
-        depths = [0.] * 3
+        # Each entry in depths is a tuple containing the depth and
+        # the sample index.
+        depths = []
         for i, key in enumerate(['Sample.1', 'Sample.2', 'Sample.3']):
-            depths[i] = cfg.get_float(key, 'Depth')
+            depths.append((cfg.get_float(key, 'Depth'), i+1))
     except BadEntry as e:
         logger.exception("Configuration error")
         return False
 
-    for i, target in enumerate(depths):
-        index = i + 1
+    # Samples are collected in depth order, not index order.
+    depths.sort(key=lambda e: e[0])
+    for target, index in depths:
         logger.info("Seeking depth for sample %d; %.2f +/- %.2f",
                     index, target, deployment.seek_err)
         drange = (target-deployment.seek_err, target+deployment.seek_err)
