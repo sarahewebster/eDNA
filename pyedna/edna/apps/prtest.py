@@ -59,9 +59,6 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
                                 gain=cfg.get_float('Pressure.Filter', 'Gain'),
                                 prmax=cfg.get_float('Pressure.Filter', 'Max'))
 
-        def checkpr() -> Tuple[float, bool]:
-            psi = read_pressure(adc, sens["Filter"].chan, gain=sens["Filter"].gain)
-            return psi, psi < sens["Filter"].prmax
     except BadEntry as e:
         logger.exception("Configuration error")
         return False
@@ -72,7 +69,7 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
     try:
         for tick in ticker(interval):
             psi = read_pressure(adc, sens[args.sensor].chan, gain=sens[args.sensor].gain)
-            wtr.writerec(OrderedDict(elapsed=round(tick, 3),
+            wtr.writerec(OrderedDict(elapsed=round(tick-t0, 3),
                                      pr=round(psi, 3)))
     except KeyboardInterrupt:
         print("done", file=sys.stderr)
