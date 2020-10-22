@@ -1,9 +1,6 @@
 import time
 
 
-__version__ = '0.1.0'
-
-
 def ticker(interval, fsleep=time.sleep):
     """
     Timer tick generator. Can be used to iterate at a fixed rate.
