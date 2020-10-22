@@ -26,6 +26,7 @@ Bar = 2.5
 Baz = 42
 [Adc]
 Addr=0x48
+Gain=2/3
 """
 
 OVERRIDE = """
@@ -57,6 +58,10 @@ class ConfigTestCase(unittest.TestCase):
     def test_override(self):
         x = self.cfg.get_int('Foo', 'Baz')
         self.assertEqual(x, 43)
+
+    def test_expr(self):
+        x = self.cfg.get_expr('Adc', 'Gain')
+        self.assertEqual(x, 2/3)
 
     def test_bad_key(self):
         self.assertRaises(BadEntry,

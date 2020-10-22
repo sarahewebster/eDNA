@@ -100,6 +100,10 @@ class Config(ConfigParser):
             raise BadEntry("/".join([section, key]))
         return value
 
+    def get_expr(self, section: str, key: str) -> Any:
+        s = self.get_string(section, key)
+        return eval(s)
+
     def get_float(self, section: str, key: str) -> float:
         try:
             value = self.getfloat(section, key)

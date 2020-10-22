@@ -92,10 +92,10 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
         adc = ADS1115(address=cfg.get_int('Adc', 'Addr'),
                       busnum=cfg.get_int('Adc', 'Bus'))
         pr["Filter"] = PrSensor(chan=cfg.get_int('Pressure.Filter', 'Chan'),
-                                gain=cfg.get_float('Pressure.Filter', 'Gain'),
+                                gain=cfg.get_expr('Pressure.Filter', 'Gain'),
                                 prmax=cfg.get_float('Pressure.Filter', 'Max'))
         pr["Env"] = PrSensor(chan=cfg.get_int('Pressure.Env', 'Chan'),
-                             gain=cfg.get_float('Pressure.Env', 'Gain'),
+                             gain=cfg.get_expr('Pressure.Env', 'Gain'),
                              prmax=0)
 
         def checkpr() -> Tuple[float, bool]:

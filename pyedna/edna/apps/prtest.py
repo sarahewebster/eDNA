@@ -52,11 +52,11 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
         sens = dict()
         adc = ADS1115(address=cfg.get_int('Adc', 'Addr'),
                       busnum=cfg.get_int('Adc', 'Bus'))
-        sens["Env"] = PrSensor(chan=cfg.get_int('Pressure.Env', 'Chan'),
-                             gain=cfg.get_float('Pressure.Env', 'Gain'),
+        sens["env"] = PrSensor(chan=cfg.get_int('Pressure.Env', 'Chan'),
+                             gain=cfg.get_expr('Pressure.Env', 'Gain'),
                              prmax=0)
-        sens["Filter"] = PrSensor(chan=cfg.get_int('Pressure.Filter', 'Chan'),
-                                gain=cfg.get_float('Pressure.Filter', 'Gain'),
+        sens["filter"] = PrSensor(chan=cfg.get_int('Pressure.Filter', 'Chan'),
+                                gain=cfg.get_expr('Pressure.Filter', 'Gain'),
                                 prmax=cfg.get_float('Pressure.Filter', 'Max'))
 
     except BadEntry as e:
@@ -90,6 +90,7 @@ def main() -> int:
                         level=logging.INFO,
                         datefmt='%Y-%m-%d %H:%M:%S',
                         stream=sys.stderr)
+    status = False
     try:
         status = runtest(cfg, args, DataWriter(sys.stdout))
     except Exception as e:

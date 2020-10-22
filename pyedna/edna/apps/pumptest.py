@@ -61,7 +61,7 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
         adc = ADS1115(address=cfg.get_int('Adc', 'Addr'),
                       busnum=cfg.get_int('Adc', 'Bus'))
         sens["Filter"] = PrSensor(chan=cfg.get_int('Pressure.Filter', 'Chan'),
-                                gain=cfg.get_float('Pressure.Filter', 'Gain'),
+                                gain=cfg.get_expr('Pressure.Filter', 'Gain'),
                                 prmax=cfg.get_float('Pressure.Filter', 'Max'))
 
         def checkpr() -> Tuple[float, bool]:
