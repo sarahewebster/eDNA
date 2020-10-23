@@ -12,6 +12,10 @@
 # JSON data records.
 #
 
+# jq is required
+set -e
+type jq >&2
+
 infile="$1"
 [[ -z $infile ]] && {
     echo "Missing input file" 2>&1
