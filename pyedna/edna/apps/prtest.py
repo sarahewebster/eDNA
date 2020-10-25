@@ -14,7 +14,7 @@ try:
 except ImportError:
     from edna.mockpr import Adc as ADS1115
 from edna import ticker
-from edna.periph import read_pressure
+from edna.periph import read_pressure, psia_to_dbar
 from edna.config import Config, BadEntry
 
 
@@ -42,6 +42,8 @@ def parse_cmdline() -> argparse.Namespace:
                         type=float,
                         default=2,
                         help="sensor sampling rate in Hz")
+    parser.add_argument("--dbars", action="store_true",
+                        help="return gauge pressure in decibars")
     return parser.parse_args()
 
 
@@ -69,8 +71,12 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
     try:
         for tick in ticker(interval):
             psi = read_pressure(adc, sens[args.sensor].chan, gain=sens[args.sensor].gain)
-            wtr.writerec(OrderedDict(elapsed=round(tick-t0, 3),
-                                     pr=round(psi, 3)))
+            if args.dbars:
+                wtr.writerec(OrderedDict(elapsed=round(tick-t0, 3),
+                                         pr=round(psia_to_dbar(psi), 3)))
+            else:
+                wtr.writerec(OrderedDict(elapsed=round(tick-t0, 3),
+                                         pr=round(psi, 3)))
     except KeyboardInterrupt:
         print("done", file=sys.stderr)
 
