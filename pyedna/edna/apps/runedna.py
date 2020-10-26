@@ -10,9 +10,9 @@ import time
 import logging
 import datetime
 import tarfile
-from typing import Callable, Tuple
+from typing import Callable, Tuple, NamedTuple
 from functools import partial
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
 try:
     import RPi.GPIO as GPIO # type: ignore
 except ImportError:
@@ -24,12 +24,22 @@ except ImportError:
     from edna.mockpr import Adc as ADS1115
 from edna import ticker
 from edna.sample import Datafile, FlowLimits, collect, seekdepth
-from edna.periph import Valve, FlowMeter, \
-    read_pressure, psia_to_dbar, gpio_high
+from edna.periph import Valve, FlowMeter, LED, \
+    read_pressure, psia_to_dbar, gpio_high, blinker, fader
 from edna.config import Config, BadEntry
 
 
-PrSensor = namedtuple("PrSensor", ["chan", "gain", "prmax"])
+class PrSensor(NamedTuple):
+    chan: int
+    gain: float
+    prmax: float = 0
+
+
+class LedCtl(NamedTuple):
+    obj: LED
+    fast: float
+    slow: float
+    fade: float
 
 
 class Deployment(object):
@@ -121,6 +131,10 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
         fm = FlowMeter(cfg.get_int('FlowSensor', 'Input'),
                        cfg.get_int('FlowSensor', 'Ppl'))
         sample_rate = cfg.get_float('FlowSensor', 'Rate')
+        ledctl = LedCtl(obj=LED(cfg.get_int("LED", "GPIO")),
+                        fast=cfg.get_float("LED", "fast"),
+                        slow=cfg.get_float("LED", "slow"),
+                        fade=cfg.get_float("LED", "fade"))
 
         limits = dict()
         for key in ("Sample", "Ethanol"):
@@ -147,10 +161,11 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
         logger.info("Seeking depth for sample %d; %.2f +/- %.2f",
                     index, target, deployment.seek_err)
         drange = (target-deployment.seek_err, target+deployment.seek_err)
-        depth, status = seekdepth(df,
-                                  partial(checkdepth, drange),
-                                  deployment.pr_rate,
-                                  deployment.seek_time)
+        with blinker(ledctl.obj, ledctl.slow):
+            depth, status = seekdepth(df,
+                                      partial(checkdepth, drange),
+                                      deployment.pr_rate,
+                                      deployment.seek_time)
         if not status:
             logger.critical("Depth seek time limit expired. Aborting.")
             return False

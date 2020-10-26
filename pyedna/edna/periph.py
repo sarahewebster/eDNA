@@ -314,3 +314,17 @@ class LED(object):
             self.ctrl.stop()
             self.ctrl = None
             self.logger.info("Stop LED fader")
+
+
+@contextmanager
+def blinker(led: LED, period: float):
+    led.start_blink(period)
+    yield
+    led.stop_blink()
+
+
+@contextmanager
+def fader(led: LED, period: float):
+    led.start_fade(period)
+    yield
+    led.stop_fade()
