@@ -113,6 +113,7 @@ class Valve(object):
         self.power = power
         self.ground = ground
         self.logger = logging.getLogger("edna.valve")
+        self.close()
 
     def __str__(self):
         return "Valve({:d}, {:d}, {:d})".format(self.enable, self.power, self.ground)
