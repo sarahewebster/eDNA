@@ -70,7 +70,7 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
 
         pumps = dict()
         for key in ("Sample", "Ethanol"):
-            pumps[key] = cfg.get_int('Motor.'+key, 'Enable')
+            pumps[key.lower()] = cfg.get_int('Motor.'+key, 'Enable')
             GPIO.setup(pumps[key.lower()], GPIO.OUT)
 
         valves = dict()
@@ -120,7 +120,7 @@ def main() -> int:
                         stream=sys.stderr)
     # eDNA uses the Broadcom SOC pin numbering scheme
     GPIO.setmode(GPIO.BCM)
-
+    status = False
     try:
         status = runtest(cfg, args, DataWriter(sys.stdout))
     except Exception as e:
