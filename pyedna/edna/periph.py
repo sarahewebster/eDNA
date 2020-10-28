@@ -65,7 +65,7 @@ class Counter(object):
         GPIO.add_event_detect(self.line, GPIO.RISING, callback=self._cb)
         self.logger.info("Counter %s reset", self.name)
 
-    def _cb(self):
+    def _cb(self, *args):
         self.count += 1
         self.t = time.time() - self.t0
 
