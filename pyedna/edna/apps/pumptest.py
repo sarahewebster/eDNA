@@ -86,6 +86,14 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
         logger.exception("Configuration error")
         return False
 
+    if args.pump not in pumps:
+        logger.critical("Invalid pump name: '%s'", args.pump)
+        return False
+
+    if args.valve not in valves:
+        logger.critical("Invalid valve: '%s'", args.valve)
+        return False
+
     t0 = time.time()
     interval = 1./args.rate
     print("Enter ctrl-c to exit ...", file=sys.stderr)
