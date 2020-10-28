@@ -50,6 +50,8 @@ def parse_cmdline() -> argparse.Namespace:
                         type=float,
                         default=2,
                         help="flow meter sampling rate in Hz")
+    parser.add_argument("--clean", action="store_true",
+                        help="restore boot-up GPIO settings on exit")
     return parser.parse_args()
 
 
@@ -134,7 +136,8 @@ def main() -> int:
     except Exception as e:
         logging.exception("Error running the pump test")
     finally:
-        GPIO.cleanup()
+        if args.clean:
+            GPIO.cleanup()
     return 0 if status else 1
 
 
