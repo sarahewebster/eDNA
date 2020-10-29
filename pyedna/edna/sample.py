@@ -77,7 +77,7 @@ def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, int]:
 
 
 def flow_monitor(df: Optional[Datafile], event: str,
-                 pump: int,
+                 pump: periph.Pump,
                  valve: periph.Valve, fm: periph.FlowMeter,
                  rate: float, stop: FlowLimits,
                  checkpr: Callable[[], Tuple[float, bool]],
@@ -95,7 +95,7 @@ def flow_monitor(df: Optional[Datafile], event: str,
 
     :param df: data file or None
     :param event: tag for data file records
-    :param pump: pump motor GPIO line
+    :param pump: pump motor
     :param valve: valve to open, will be closed on return
     :param fm: flow meter
     :param rate: flow meter sampling rate in Hz
@@ -111,9 +111,7 @@ def flow_monitor(df: Optional[Datafile], event: str,
     fm.reset()
     with valve:
         logger.info("Starting pump %d", pump)
-        def cb_log():
-            logger.info("Stopping pump %d", pump)
-        with periph.gpio_high(pump, cb=cb_log):
+        with pump:
             for tick in ticker(period):
                 amount, secs = fm.amount()
                 pr, pr_ok = checkpr()
@@ -146,7 +144,7 @@ SampleIdx: int = 0
 EthanolIdx: int = 1
 
 def collect(df: Datafile, index: int,
-            pumps: Tuple[int, int],
+            pumps: Tuple[periph.Pump, periph.Pump],
             valves: Tuple[periph.Valve, periph.Valve],
             fm: periph.FlowMeter,
             rate: float,
