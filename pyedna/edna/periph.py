@@ -329,3 +329,51 @@ def fader(led: LED, period: float):
     led.start_fade(period)
     yield
     led.stop_fade()
+
+
+class Pump(object):
+    """
+    Class to represent a pump. This class is a Context Manager
+    which allows the following usage:
+
+        with Pump(line):
+            do_something()
+
+    The valve will be open within the Context and closed when it exits.
+    """
+    def __init__(self, line: int):
+        """
+        :param line: GPIO line to enable this pump.
+        """
+        self.line = line
+        self.logger = logging.getLogger("edna.pump")
+        GPIO.setup(self.line, GPIO.OUT)
+
+    def __str__(self):
+        return "Pump({:d})".format(self.line)
+
+    def start(self):
+        """
+        Start the pump
+        """
+        GPIO.output(self.line, GPIO.HIGH)
+        self.logger.info("%s on", str(self))
+
+    def stop(self):
+        """
+        Stop the pump
+        """
+        GPIO.output(self.line, GPIO.LOW)
+        self.logger.info("%s off", str(self))
+
+    def __enter__(self):
+        """
+        Context Manager support
+        """
+        self.start()
+        return self
+
+    def __exit__(self, etype, val, traceback):
+        self.stop()
+        # Allow exceptions to propogate out
+        return False
