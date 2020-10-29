@@ -24,8 +24,8 @@ except ImportError:
     from edna.mockpr import Adc as ADS1115
 from edna import ticker
 from edna.sample import Datafile, FlowLimits, collect, seekdepth
-from edna.periph import Valve, FlowMeter, LED, \
-    read_pressure, psia_to_dbar, gpio_high, blinker, fader
+from edna.periph import Valve, Pump, FlowMeter, LED, \
+    read_pressure, psia_to_dbar, blinker, fader
 from edna.config import Config, BadEntry
 
 
@@ -120,8 +120,7 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
 
         pumps = dict()
         for key in ("Sample", "Ethanol"):
-            pumps[key] = cfg.get_int('Motor.'+key, 'Enable')
-            GPIO.setup(pumps[key], GPIO.OUT)
+            pumps[key] = Pump(cfg.get_int('Motor.'+key, 'Enable'))
 
         valves = dict()
         for key in ("1", "2", "3", "Ethanol"):
@@ -239,7 +238,8 @@ def main() -> int:
         with tarfile.open(arpath, "w:gz") as tar:
             tar.add(deployment.dir)
     finally:
-        GPIO.cleanup()
+        if args.clean:
+            GPIO.cleanup()
 
     return 0 if status else 1
 

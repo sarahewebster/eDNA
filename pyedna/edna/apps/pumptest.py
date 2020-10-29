@@ -18,7 +18,7 @@ try:
 except ImportError:
     from edna.mockpr import Adc as ADS1115
 from edna import ticker
-from edna.periph import Valve, FlowMeter, read_pressure, gpio_high
+from edna.periph import Valve, FlowMeter, Pump, read_pressure
 from edna.config import Config, BadEntry
 
 
@@ -72,8 +72,7 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
 
         pumps = dict()
         for key in ("Sample", "Ethanol"):
-            pumps[key.lower()] = cfg.get_int('Motor.'+key, 'Enable')
-            GPIO.setup(pumps[key.lower()], GPIO.OUT)
+            pumps[key.lower()] = Pump(cfg.get_int('Motor.'+key, 'Enable'))
 
         valves = dict()
         for key in ("1", "2", "3", "Ethanol"):
@@ -102,7 +101,7 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
     try:
         fm.reset()
         with valves[args.valve]:
-            with gpio_high(pumps[args.pump]):
+            with pumps[args.pump]:
                 for tick in ticker(interval):
                     amount, secs = fm.amount()
                     pr, pr_ok = checkpr()
