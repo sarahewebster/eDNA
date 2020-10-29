@@ -68,9 +68,11 @@ def parse_cmdline() -> argparse.Namespace:
     parser.add_argument("cfg", metavar="FILE",
                         help="deployment configuration file")
     parser.add_argument("--syscfg", metavar="FILE",
-                        help="location of the system confguration file")
+                        help="system confguration file (default: %(default)s)")
     parser.add_argument("--datadir", metavar="DIR",
-                        help="location of the data directory")
+                        help="data directory (default: %(default)s)")
+    parser.add_argument("--clean", action="store_true",
+                        help="restore boot-up GPIO settings on exit")
     return parser.parse_args()
 
 

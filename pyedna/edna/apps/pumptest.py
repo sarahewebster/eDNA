@@ -41,15 +41,15 @@ def parse_cmdline() -> argparse.Namespace:
     parser.add_argument("pump", metavar="NAME",
                         help="pump to run; sample or ethanol")
     parser.add_argument("--syscfg", metavar="FILE",
-                        help="location of the system confguration file")
+                        help="location of the system confguration file (default: %(default)s)")
     parser.add_argument("--valve",
                         type=str,
                         default="1",
-                        help="valve to open; 1, 2, 3 or ethanol")
+                        help="valve to open; 1, 2, 3 or ethanol (default: %(default)s)")
     parser.add_argument("--rate", metavar="HZ",
                         type=float,
                         default=2,
-                        help="flow meter sampling rate in Hz")
+                        help="flow meter sampling rate in Hz (default: %(default)s)")
     parser.add_argument("--clean", action="store_true",
                         help="restore boot-up GPIO settings on exit")
     return parser.parse_args()
