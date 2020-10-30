@@ -102,42 +102,45 @@ class Valve(object):
             do_something()
 
     The valve will be open within the Context and closed when it exits.
+
+    Each valve is controlled by an H-bridge. The valve is closed by pulsing
+    IN1 high and IN2 low, it's closed by inverting those states.
     """
-    def __init__(self, enable: int, power: int, ground: int):
+    def __init__(self, enable: int, in1: int, in2: int):
         """
-        :param enable: GPIO line to select this valve
-        :param power: power GPIO line
-        :param ground: ground GPIO line
+        :param enable: GPIO line to enable this valve
+        :param in1: GPIO line connected to IN1
+        :param in2: GPIO line connected to IN2
         """
         self.enable = enable
-        self.power = power
-        self.ground = ground
+        self.in2 = in2
+        self.in1 = in1
         self.logger = logging.getLogger("edna.valve")
-        GPIO.setup([self.enable, self.power, self.ground], GPIO.OUT)
+        GPIO.setup([self.enable, self.in2, self.in1], GPIO.OUT)
         GPIO.output(self.enable, GPIO.HIGH)
         self.close()
 
     def __str__(self):
-        return "Valve({:d}, {:d}, {:d})".format(self.enable, self.power, self.ground)
+        return "Valve({:d}, {:d}, {:d})".format(self.enable, self.in1, self.in2)
 
     def open(self):
         """
         Open the valve
         """
-        GPIO.output(self.ground, GPIO.LOW)
-        GPIO.output(self.power, GPIO.HIGH)
+        GPIO.output(self.in1, GPIO.LOW)
+        GPIO.output(self.in2, GPIO.HIGH)
         time.sleep(0.1)
-        GPIO.output(self.power, GPIO.LOW)
+        GPIO.output(self.in2, GPIO.LOW)
         self.logger.info("%s opened", str(self))
 
     def close(self):
         """
         Close the valve.
         """
-        GPIO.output(self.power, GPIO.LOW)
-        GPIO.output(self.ground, GPIO.HIGH)
+        GPIO.output(self.in2, GPIO.LOW)
+        GPIO.output(self.in1, GPIO.HIGH)
         time.sleep(0.1)
-        GPIO.output(self.ground, GPIO.LOW)
+        GPIO.output(self.in1, GPIO.LOW)
         self.logger.info("%s closed", str(self))
 
     def __enter__(self):

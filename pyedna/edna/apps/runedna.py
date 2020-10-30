@@ -126,8 +126,8 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
         for key in ("1", "2", "3", "Ethanol"):
             vkey = "Valve." + key
             valves[key] = Valve(cfg.get_int(vkey, 'Enable'),
-                                cfg.get_int(vkey, 'Power'),
-                                cfg.get_int(vkey, 'Gnd'))
+                                cfg.get_int(vkey, 'IN1'),
+                                cfg.get_int(vkey, 'IN2'))
 
         fm = FlowMeter(cfg.get_int('FlowSensor', 'Input'),
                        cfg.get_int('FlowSensor', 'Ppl'))
