@@ -113,30 +113,31 @@ class Valve(object):
         self.power = power
         self.ground = ground
         self.logger = logging.getLogger("edna.valve")
+        GPIO.setup([self.enable, self.power, self.ground], GPIO.OUT)
+        GPIO.output(self.enable, GPIO.HIGH)
         self.close()
 
     def __str__(self):
         return "Valve({:d}, {:d}, {:d})".format(self.enable, self.power, self.ground)
 
-    def _setup(self):
-        GPIO.setup([self.enable, self.power, self.ground], GPIO.OUT)
-
     def open(self):
         """
         Open the valve
         """
-        self._setup()
-        GPIO.output(self.enable, GPIO.HIGH)
-        GPIO.output([self.power, self.ground], (GPIO.HIGH, GPIO.LOW))
+        GPIO.output(self.ground, GPIO.LOW)
+        GPIO.output(self.power, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(self.power, GPIO.LOW)
         self.logger.info("%s opened", str(self))
 
     def close(self):
         """
         Close the valve.
         """
-        self._setup()
-        GPIO.output(self.enable, GPIO.HIGH)
-        GPIO.output([self.power, self.ground], (GPIO.LOW, GPIO.HIGH))
+        GPIO.output(self.power, GPIO.LOW)
+        GPIO.output(self.ground, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(self.ground, GPIO.LOW)
         self.logger.info("%s closed", str(self))
 
     def __enter__(self):
