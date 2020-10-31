@@ -11,7 +11,7 @@ except ImportError:
 import time
 import logging
 from threading import Thread, Event
-from typing import Tuple, Any, Callable
+from typing import Tuple, Any, Callable, Union
 from contextlib import contextmanager
 from . import ticker
 
@@ -102,45 +102,55 @@ class Valve(object):
             do_something()
 
     The valve will be open within the Context and closed when it exits.
-
-    Each valve is controlled by an H-bridge. The valve is closed by pulsing
-    IN1 high and IN2 low, it's closed by inverting those states.
     """
-    def __init__(self, enable: int, in1: int, in2: int):
+    enable: int
+    _lopen: Union[int, None]
+    _lclose: Union[int, None]
+
+    def __init__(self, enable: int, in1: int, in2: int, lopen: str = "in1", lclose: str = "in2"):
         """
         :param enable: GPIO line to enable this valve
         :param in1: GPIO line connected to IN1
         :param in2: GPIO line connected to IN2
+        :param lopen: H-bridge line which opens the valve
+        :param lclose: H-bridge line which closes the valve
         """
         self.enable = enable
-        self.in2 = in2
-        self.in1 = in1
         self.logger = logging.getLogger("edna.valve")
-        GPIO.setup([self.enable, self.in2, self.in1], GPIO.OUT)
+        l = locals()
+        self._lopen = l.get(lopen.lower())
+        if self._lopen is None:
+            raise ValueError("'{}': invalid valve control line".format(lopen))
+
+        self._lclose = l.get(lclose.lower())
+        if self._lclose is None:
+            raise ValueError("'{}': invalid valve control line".format(lclose))
+
+        GPIO.setup([self.enable, self._lopen, self._lclose], GPIO.OUT)
         GPIO.output(self.enable, GPIO.HIGH)
         self.close()
 
     def __str__(self):
-        return "Valve({:d}, {:d}, {:d})".format(self.enable, self.in1, self.in2)
+        return "Valve({:d}, {:d}, {:d})".format(self.enable, self._lopen, self._lclose)
 
     def open(self):
         """
         Open the valve
         """
-        GPIO.output(self.in1, GPIO.LOW)
-        GPIO.output(self.in2, GPIO.HIGH)
+        GPIO.output(self._lclose, GPIO.LOW)
+        GPIO.output(self._lopen, GPIO.HIGH)
         time.sleep(0.1)
-        GPIO.output(self.in2, GPIO.LOW)
+        GPIO.output(self._lopen, GPIO.LOW)
         self.logger.info("%s opened", str(self))
 
     def close(self):
         """
         Close the valve.
         """
-        GPIO.output(self.in2, GPIO.LOW)
-        GPIO.output(self.in1, GPIO.HIGH)
+        GPIO.output(self._lopen, GPIO.LOW)
+        GPIO.output(self._lclose, GPIO.HIGH)
         time.sleep(0.1)
-        GPIO.output(self.in1, GPIO.LOW)
+        GPIO.output(self._lclose, GPIO.LOW)
         self.logger.info("%s closed", str(self))
 
     def __enter__(self):

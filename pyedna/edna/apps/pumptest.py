@@ -78,8 +78,10 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
         for key in ("1", "2", "3", "Ethanol"):
             vkey = "Valve." + key
             valves[key.lower()] = Valve(cfg.get_int(vkey, 'Enable'),
-                                cfg.get_int(vkey, 'IN1'),
-                                cfg.get_int(vkey, 'IN2'))
+                                        cfg.get_int(vkey, 'IN1'),
+                                        cfg.get_int(vkey, 'IN2'),
+                                        lopen=cfg.get_string(vkey, 'open'),
+                                        lclose=cfg.get_string(vkey, 'close'))
 
         fm = FlowMeter(cfg.get_int('FlowSensor', 'Input'),
                        cfg.get_int('FlowSensor', 'Ppl'))
