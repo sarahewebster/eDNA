@@ -353,7 +353,8 @@ class Pump(object):
         with Pump(line):
             do_something()
 
-    The valve will be open within the Context and closed when it exits.
+    The pump will be running within the Context and stopped when
+    the Context exits.
     """
     def __init__(self, line: int):
         """
