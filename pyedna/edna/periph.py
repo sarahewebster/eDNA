@@ -11,7 +11,7 @@ except ImportError:
 import time
 import logging
 from threading import Thread, Event
-from typing import Tuple, Any, Callable, Union
+from typing import Tuple, Any, Callable, Union, List
 from contextlib import contextmanager
 from . import ticker
 
@@ -213,19 +213,39 @@ class Battery(object):
         return val[0] + val[1]*256
 
 
-def read_pressure(adc: Any, chan: int, gain: float=2/3) -> float:
+class PrSensor(object):
     """
-    Read pressure from an AdaFruit ADS1x15 ADC channel and return
-    the value in psia.
+    Class to implement a pressure sensor attached to an Adafruit_ADS1x15
+    ADC board.
+    """
+    adc: Any
+    chan: int
+    gain: float
+    vmax: float
+    vbase: float = 4.096
 
-    :param adc: ADC object
-    :type adc: Adafruit_ADS1x15
-    :param chan: channel number
-    :param gain: ADC gain setting
-    """
-    x = adc.read_adc(chan, gain)
-    v = 6.144*x/32767.0
-    return 50.0*v - 10
+    def __init__(self, adc: Any, chan: int, gain: float,
+                 coeff: List[float] = [-10., 50.]):
+        """
+        :param adc: ADC object
+        :param chan: channel number
+        :param gain: gain value
+        :param coeff: coefficients to convert volts to psi
+
+        The equation to convert volts to psi is:
+
+            psi = coeff[0] + coeff[1]*volts
+        """
+        self.adc = adc
+        self.gain = gain
+        self.vmax = self.vbase/gain
+        self.chan = chan
+        self.coeff = coeff
+
+    def read(self) -> float:
+        x = self.adc.read_adc(self.chan, self.gain)
+        v = self.vmax*x/32767.0
+        return self.coeff[0] + v*self.coeff[1]
 
 
 def psia_to_dbar(p: float) -> float:

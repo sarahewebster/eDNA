@@ -14,11 +14,8 @@ try:
 except ImportError:
     from edna.mockpr import Adc as ADS1115
 from edna import ticker
-from edna.periph import read_pressure, psia_to_dbar
+from edna.periph import PrSensor, psia_to_dbar
 from edna.config import Config, BadEntry
-
-
-PrSensor = namedtuple("PrSensor", ["chan", "gain", "prmax"])
 
 
 class DataWriter(object):
@@ -54,12 +51,12 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
         sens = dict()
         adc = ADS1115(address=cfg.get_int('Adc', 'Addr'),
                       busnum=cfg.get_int('Adc', 'Bus'))
-        sens["env"] = PrSensor(chan=cfg.get_int('Pressure.Env', 'Chan'),
-                             gain=cfg.get_expr('Pressure.Env', 'Gain'),
-                             prmax=0)
-        sens["filter"] = PrSensor(chan=cfg.get_int('Pressure.Filter', 'Chan'),
-                                gain=cfg.get_expr('Pressure.Filter', 'Gain'),
-                                prmax=cfg.get_float('Pressure.Filter', 'Max'))
+        sens["env"] = PrSensor(adc,
+                               cfg.get_int('Pressure.Env', 'Chan'),
+                               cfg.get_expr('Pressure.Env', 'Gain'))
+        sens["filter"] = PrSensor(adc,
+                                  cfg.get_int('Pressure.Filter', 'Chan'),
+                                  cfg.get_expr('Pressure.Filter', 'Gain'))
 
     except BadEntry as e:
         logger.exception("Configuration error")
@@ -70,7 +67,7 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
     print("Enter ctrl-c to exit ...", file=sys.stderr)
     try:
         for tick in ticker(interval):
-            psi = read_pressure(adc, sens[args.sensor].chan, gain=sens[args.sensor].gain)
+            psi = sens[args.sensor].read()
             if args.dbars:
                 wtr.writerec(OrderedDict(elapsed=round(tick-t0, 3),
                                          pr=round(psia_to_dbar(psi), 3)))

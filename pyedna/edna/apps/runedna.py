@@ -25,14 +25,8 @@ except ImportError:
 from edna import ticker
 from edna.sample import Datafile, FlowLimits, collect, seekdepth
 from edna.periph import Valve, Pump, FlowMeter, LED, \
-    read_pressure, psia_to_dbar, blinker, fader
+    PrSensor, psia_to_dbar, blinker, fader
 from edna.config import Config, BadEntry
-
-
-class PrSensor(NamedTuple):
-    chan: int
-    gain: float
-    prmax: float = 0
 
 
 class LedCtl(NamedTuple):
@@ -103,19 +97,20 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
         pr = dict()
         adc = ADS1115(address=cfg.get_int('Adc', 'Addr'),
                       busnum=cfg.get_int('Adc', 'Bus'))
-        pr["Filter"] = PrSensor(chan=cfg.get_int('Pressure.Filter', 'Chan'),
-                                gain=cfg.get_expr('Pressure.Filter', 'Gain'),
-                                prmax=cfg.get_float('Pressure.Filter', 'Max'))
-        pr["Env"] = PrSensor(chan=cfg.get_int('Pressure.Env', 'Chan'),
-                             gain=cfg.get_expr('Pressure.Env', 'Gain'),
-                             prmax=0)
+        pr["Filter"] = PrSensor(adc,
+                                cfg.get_int('Pressure.Filter', 'Chan'),
+                                cfg.get_expr('Pressure.Filter', 'Gain'))
+        pr["Env"] = PrSensor(adc,
+                             cfg.get_int('Pressure.Env', 'Chan'),
+                             cfg.get_expr('Pressure.Env', 'Gain'))
 
+        prmax = cfg.get_float('Pressure.Filter', 'Max')
         def checkpr() -> Tuple[float, bool]:
-            psi = read_pressure(adc, pr["Filter"].chan, gain=pr["Filter"].gain)
-            return psi, psi < pr["Filter"].prmax
+            psi = pr["Filter"].read()
+            return psi, psi < prmax
 
         def checkdepth(limits: Tuple[float, float]) -> Tuple[float, bool]:
-            dbar = psia_to_dbar(read_pressure(adc, pr["Env"].chan, gain=pr["Env"].gain))
+            dbar = psia_to_dbar(pr["Env"].read())
             return dbar, limits[0] <= dbar <= limits[1]
 
         pumps = dict()
