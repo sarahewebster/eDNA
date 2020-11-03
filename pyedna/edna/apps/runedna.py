@@ -224,6 +224,10 @@ def main() -> int:
     logger = logging.getLogger()
     # eDNA uses the Broadcom SOC pin numbering scheme
     GPIO.setmode(GPIO.BCM)
+    # If we don't suppress warnings, as message will be printed to stderr
+    # everytime GPIO.setup is called on a pin that isn't in the default
+    # state (input).
+    GPIO.setwarnings(False)
 
     status = False
     try:
