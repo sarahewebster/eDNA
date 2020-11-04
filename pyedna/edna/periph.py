@@ -279,15 +279,17 @@ class LED(object):
     Class to control an LED attached to a GPIO line.
     """
     line: int
-    ctlr: GPIO.PWM
+    ctlr: Union[GPIO.PWM, None]
     tid: Any
     ev: Event
 
     def __init__(self, line: int):
         self.line = line
+        GPIO.setup(self.line, GPIO.OUT)
         self.tid = None
         self.ev = Event()
         self.logger = logging.getLogger("edna.led")
+        self.ctlr = None
 
     def __del__(self):
         self.stop_fade()
@@ -316,7 +318,8 @@ class LED(object):
         gen = sawtooth(int(period/rate))
         for tick in ticker(0.1):
             y = next(gen)
-            self.ctlr.ChangeDutyCycle(y*100)
+            if self.ctlr is not None:
+                self.ctlr.ChangeDutyCycle(y*100)
             if self.ev.is_set():
                 break
 
