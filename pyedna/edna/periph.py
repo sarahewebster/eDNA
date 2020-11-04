@@ -38,14 +38,14 @@ class Counter(object):
     line: int
     name: str
 
-    def __init__(self, line: int, name: str):
+    def __init__(self, line: int, name: str = ""):
         """
         :param line: GPIO line to monitor
         """
         self.line = line
-        self.name = name
+        self.name = name or "Counter({:d})".format(line)
         self.logger = logging.getLogger("edna.counter")
-        GPIO.setup(self.line, GPIO.IN)
+        GPIO.setup(self.line, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         self.reset()
 
     def __del__(self):
@@ -63,17 +63,16 @@ class Counter(object):
         self.t0 = time.time()
         self.t = 0
         GPIO.add_event_detect(self.line, GPIO.RISING, callback=self._cb)
-        self.logger.info("Counter %s reset", self.name)
+        self.logger.info("Counter '%s' reset", self.name)
 
     def _cb(self, *args):
         self.count += 1
-        self.t = time.time() - self.t0
 
     def read(self)-> Tuple[int, float]:
         """
         Return a tuple of the transition count and elapsed time.
         """
-        return self.count, self.t
+        return self.count, time.time() - self.t0
 
 
 class FlowMeter(Counter):
@@ -86,7 +85,7 @@ class FlowMeter(Counter):
         :param ppl: pulses per liter
         """
         self.scale = 1./float(ppl)
-        super().__init__(line, "flowmeter")
+        super().__init__(line, "flow-meter")
 
     def amount(self) -> Tuple[float, float]:
         pulses, t = self.read()
