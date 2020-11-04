@@ -18,11 +18,11 @@ try:
 except ImportError:
     from edna.mockpr import Adc as ADS1115
 from edna import ticker
-from edna.periph import Valve, FlowMeter, Pump, read_pressure
+from edna.periph import Valve, FlowMeter, Pump, PrSensor
 from edna.config import Config, BadEntry
 
 
-PrSensor = namedtuple("PrSensor", ["chan", "gain", "prmax"])
+#PrSensor = namedtuple("PrSensor", ["chan", "gain", "prmax"])
 
 
 class DataWriter(object):
@@ -62,13 +62,14 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
         sens = dict()
         adc = ADS1115(address=cfg.get_int('Adc', 'Addr'),
                       busnum=cfg.get_int('Adc', 'Bus'))
-        sens["Filter"] = PrSensor(chan=cfg.get_int('Pressure.Filter', 'Chan'),
-                                gain=cfg.get_expr('Pressure.Filter', 'Gain'),
-                                prmax=cfg.get_float('Pressure.Filter', 'Max'))
+        sens["Filter"] = PrSensor(adc,
+                                  cfg.get_int('Pressure.Filter', 'Chan'),
+                                  cfg.get_expr('Pressure.Filter', 'Gain'))
 
+        prmax = cfg.get_float('Pressure.Filter', 'Max')
         def checkpr() -> Tuple[float, bool]:
-            psi = read_pressure(adc, sens["Filter"].chan, gain=sens["Filter"].gain)
-            return psi, psi < sens["Filter"].prmax
+            psi = sens["Filter"].read()
+            return psi, psi < prmax
 
         pumps = dict()
         for key in ("Sample", "Ethanol"):
