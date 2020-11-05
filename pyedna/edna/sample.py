@@ -78,7 +78,7 @@ def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, int]:
 
 def flow_monitor(df: Optional[Datafile], event: str,
                  pump: periph.Pump,
-                 valve: periph.Valve, fm: periph.FlowMeter,
+                 fm: periph.FlowMeter,
                  rate: float, stop: FlowLimits,
                  checkpr: Callable[[], Tuple[float, bool]],
                  checkdepth: Callable[[], Tuple[float, bool]],
@@ -96,7 +96,6 @@ def flow_monitor(df: Optional[Datafile], event: str,
     :param df: data file or None
     :param event: tag for data file records
     :param pump: pump motor
-    :param valve: valve to open, will be closed on return
     :param fm: flow meter
     :param rate: flow meter sampling rate in Hz
     :param stop: sampling stop criteria
@@ -109,32 +108,31 @@ def flow_monitor(df: Optional[Datafile], event: str,
     overpressure = False
     t_stop = time.time() + stop.time
     fm.reset()
-    with valve:
-        with pump:
-            for tick in ticker(period):
-                amount, secs = fm.amount()
-                pr, pr_ok = checkpr()
-                depth, depth_ok = checkdepth()
-                if df is not None:
-                    df.add_record(event, OrderedDict(elapsed=round(secs, 3),
-                                                     amount=round(amount, 3),
-                                                     pr=round(pr, 3),
-                                                     pr_ok=pr_ok,
-                                                     depth=round(depth, 3)), ts=tick)
-                if not overpressure:
-                    overpressure = not pr_ok
-                if amount >= stop.amount:
-                    break
-                if tick > t_stop:
-                    break
-                if not depth_ok:
-                    raise DepthError()
+    with pump:
+        for tick in ticker(period):
+            amount, secs = fm.amount()
+            pr, pr_ok = checkpr()
+            depth, depth_ok = checkdepth()
             if df is not None:
-                for i, b in enumerate(batts):
-                    v, a, soc = read_battery(b)
-                    df.add_record("battery-"+str(i),
-                                  OrderedDict(v=round(v, 3),
-                                              a=round(a, 3), soc=soc), ts=tick)
+                df.add_record(event, OrderedDict(elapsed=round(secs, 3),
+                                                 amount=round(amount, 3),
+                                                 pr=round(pr, 3),
+                                                 pr_ok=pr_ok,
+                                                 depth=round(depth, 3)), ts=tick)
+            if not overpressure:
+                overpressure = not pr_ok
+            if amount >= stop.amount:
+                break
+            if tick > t_stop:
+                break
+            if not depth_ok:
+                raise DepthError()
+        if df is not None:
+            for i, b in enumerate(batts):
+                v, a, soc = read_battery(b)
+                df.add_record("battery-"+str(i),
+                              OrderedDict(v=round(v, 3),
+                                          a=round(a, 3), soc=soc), ts=tick)
 
     return amount, secs, overpressure
 
@@ -159,13 +157,14 @@ def collect(df: Datafile, index: int,
     # Valve key
     vkey = str(index)
     try:
-        vwater, w_secs, w_ovp = flow_monitor(df, "sample."+str(index),
-                                             pumps[SampleIdx],
-                                             valves[vkey], fm,
-                                             rate,
-                                             limits[SampleIdx],
-                                             checkpr,
-                                             checkdepth, batts)
+        with valves[vkey]:
+            vwater, w_secs, w_ovp = flow_monitor(df, "sample."+str(index),
+                                                 pumps[SampleIdx],
+                                                 fm,
+                                                 rate,
+                                                 limits[SampleIdx],
+                                                 checkpr,
+                                                 checkdepth, batts)
 
         if w_ovp:
             logger.warning("Overpressure event during sample pumping")
@@ -174,22 +173,23 @@ def collect(df: Datafile, index: int,
         return False
 
     with valves[vkey]:
-        vethanol, e_secs, e_ovp = flow_monitor(None, "",
-                                               pumps[EthanolIdx],
-                                               valves["Ethanol"], fm,
-                                               rate,
-                                               limits[EthanolIdx],
-                                               checkpr,
-                                               lambda: (0.0, True), batts)
-        # Open all valves to relieve back-pressure
-        for key, obj in valves.items():
-            if not obj.isopened():
-                obj.open()
-        time.sleep(1)
-        for key, obj in valves.items():
-            if key == vkey:
-                continue
-            obj.close()
+        with valves["Ethanol"]:
+            vethanol, e_secs, e_ovp = flow_monitor(None, "",
+                                                   pumps[EthanolIdx],
+                                                   fm,
+                                                   rate,
+                                                   limits[EthanolIdx],
+                                                   checkpr,
+                                                   lambda: (0.0, True), batts)
+            # Open all valves to relieve back-pressure
+            for key, obj in valves.items():
+                if not obj.isopened():
+                    obj.open()
+            time.sleep(1)
+            for key, obj in valves.items():
+                if (key == vkey) or (key == "Ethanol"):
+                    continue
+                obj.close()
 
     if e_ovp:
         logger.warning("Overpressure event during ethanol pumping")
