@@ -110,7 +110,6 @@ def flow_monitor(df: Optional[Datafile], event: str,
     t_stop = time.time() + stop.time
     fm.reset()
     with valve:
-        logger.info("Starting pump %d", pump)
         with pump:
             for tick in ticker(period):
                 amount, secs = fm.amount()
@@ -172,13 +171,14 @@ def collect(df: Datafile, index: int,
         logger.critical("Depth not maintained; sample %d aborted", index)
         return False
 
-    vethanol, e_secs, e_ovp = flow_monitor(None, "",
-                                           pumps[EthanolIdx],
-                                           valves[EthanolIdx], fm,
-                                           rate,
-                                           limits[EthanolIdx],
-                                           checkpr,
-                                           lambda: (0.0, True), batts)
+    with valves[SampleIdx]:
+        vethanol, e_secs, e_ovp = flow_monitor(None, "",
+                                               pumps[EthanolIdx],
+                                               valves[EthanolIdx], fm,
+                                               rate,
+                                               limits[EthanolIdx],
+                                               checkpr,
+                                               lambda: (0.0, True), batts)
     if e_ovp:
         logger.warning("Overpressure event during ethanol pumping")
 
