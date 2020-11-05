@@ -67,19 +67,23 @@ def parse_cmdline() -> argparse.Namespace:
                         help="data directory (default: %(default)s)")
     parser.add_argument("--clean", action="store_true",
                         help="restore boot-up GPIO settings on exit")
+    parser.add_argument("--debug", action="store_true",
+                        help="more verbose deployment log")
     return parser.parse_args()
 
 
-def init_logging(datadir: str, id: str):
+def init_logging(datadir: str, id: str, debug: bool = False):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     # Important messages to standard error
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
-    # Everything to the deployment log file
+    # Everything to the deployment log file if debug is True
     fh = logging.FileHandler(os.path.join(datadir, ("_".join(["edna", id]))+".log"))
-    fh.setLevel(logging.DEBUG)
-
+    if debug:
+        fh.setLevel(logging.DEBUG)
+    else:
+        fh.setLevel(logging.INFO)
     fmtr = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
     fmtr.default_msec_format = "%s.%03d"
     ch.setFormatter(fmtr)
@@ -211,7 +215,7 @@ def main() -> int:
     # Create deployment directory
     os.makedirs(deployment.dir, exist_ok=True)
     # Initialize logging
-    init_logging(deployment.dir, deployment.id)
+    init_logging(deployment.dir, deployment.id, debug=args.debug)
     # Save configuration to deployment directory
     with open(os.path.join(deployment.dir, "deploy.cfg"), "w") as fp:
         cfg.write(fp)
@@ -219,7 +223,7 @@ def main() -> int:
     logger = logging.getLogger()
     # eDNA uses the Broadcom SOC pin numbering scheme
     GPIO.setmode(GPIO.BCM)
-    # If we don't suppress warnings, as message will be printed to stderr
+    # If we don't suppress warnings, a message will be printed to stderr
     # everytime GPIO.setup is called on a pin that isn't in the default
     # state (input).
     GPIO.setwarnings(False)
