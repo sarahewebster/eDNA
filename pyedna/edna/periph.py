@@ -246,6 +246,26 @@ class PrSensor(object):
         v = self.vmax*x/32767.0
         return self.coeff[0] + v*self.coeff[1]
 
+    def read_burst(self, n: int, interval: float) -> float:
+        """
+        Return the mean of n values sampled interval seconds apart.
+        """
+        v = 0.
+        self.adc.start_adc(self.chan, gain=self.gain)
+        try:
+            i = 0
+            for tick in ticker(interval):
+                alpha = 1./float(i + 1)
+                beta = 1. - alpha
+                x = self.adc.get_last_result()
+                v = alpha*self.vmax*x/32767.0 + beta*v
+                i += 1
+                if i >= n:
+                    break
+        finally:
+            self.adc.stop_adc()
+        return self.coeff[0] + v*self.coeff[1]
+
 
 def psia_to_dbar(p: float) -> float:
     """

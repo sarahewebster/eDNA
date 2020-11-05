@@ -12,7 +12,7 @@ def volts_to_counts(v: float, gain: float) -> int:
 
 class Adc(object):
     def __init__(self, *args, **kw):
-        pass
+        self.chan = -1
 
     def read_adc(self, chan: int, gain: float) -> int:
         # 0.4v is approximately 10 psi
@@ -21,3 +21,16 @@ class Adc(object):
         else:
             v = normalvariate(1.2, 0.025)
         return volts_to_counts(v, gain)
+
+    def start_adc(self, chan: int, gain: float) -> int:
+        self.chan = chan
+        self.gain = gain
+        return self.read_adc(self.chan, self.gain)
+
+    def get_last_result(self) -> int:
+        if self.chan == -1:
+            return 0
+        return self.read_adc(self.chan, self.gain)
+
+    def stop_adc(self):
+        self.chan = -1
