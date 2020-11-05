@@ -33,6 +33,8 @@ LOW = 0
 FALLING = 0
 RISING = 1
 BOTH = 2
+PUD_DOWN = 0
+PUD_UP = 1
 
 detector_freq: float = 10
 
@@ -65,6 +67,10 @@ def check_pin(pin: Union[int, List[int]], ptype: int):
                 raise TypeError("Pin {:d} type mismatch".format(p))
 
 
+def setwarnings(state: bool):
+    pass
+
+
 def setmode(mode: int):
     logging.getLogger("gpio").info("GPIO mode set")
 
@@ -89,7 +95,7 @@ def remove_event_detect(pin: int):
     logging.getLogger("gpio").info("Event detector stopped on pin %d", pin)
 
 
-def setup(pin: Union[int, List[int]], ptype: int):
+def setup(pin: Union[int, List[int]], ptype: int, pull_up_down: int = 0):
     if isinstance(pin, int):
         _states[pin] = State(val=0, type=ptype, thread=None, ev=None)
     else:

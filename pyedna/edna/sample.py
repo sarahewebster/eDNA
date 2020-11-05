@@ -84,11 +84,11 @@ def flow_monitor(df: Optional[Datafile], event: str,
                  checkdepth: Callable[[], Tuple[float, bool]],
                  batts: List[periph.Battery] = []) -> Tuple[float, float, bool]:
     """
-    Open a valve and run a flow meter until the requested amount of fluid
-    is collected (stop.amount), the time limit (stop.time) is exceeded, or
-    an error condition is met. The return value is a tuple of; total fluid
-    amount in liters, elapsed time in seconds, and a boolean flag which is
-    True if an overpressure condition was detected.
+    Monitor a flow meter until the requested amount of fluid is collected
+    (stop.amount), the time limit (stop.time) is exceeded, or an error
+    condition is met. The return value is a tuple of; total fluid amount in
+    liters, elapsed time in seconds, and a boolean flag which is True if an
+    overpressure condition was detected.
 
     Errors:
       - checkdepth returns _, False; raises a DepthError exception
