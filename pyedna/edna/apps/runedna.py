@@ -13,6 +13,8 @@ import tarfile
 from typing import Callable, Tuple, NamedTuple
 from functools import partial
 from collections import OrderedDict
+# Mock some of the RPi specific packages for local
+# integration testing.
 try:
     import RPi.GPIO as GPIO # type: ignore
 except ImportError:
@@ -22,10 +24,14 @@ try:
     from Adafruit_ADS1x15 import ADS1115 # type: ignore
 except ImportError:
     from edna.mockpr import Adc as ADS1115
+try:
+    from smbus import SMBus # type: ignore
+except ImportError:
+    from edna.mocksmbus import SMBus
 from edna import ticker
 from edna.sample import Datafile, FlowLimits, collect, seekdepth
 from edna.periph import Valve, Pump, FlowMeter, LED, \
-    PrSensor, psia_to_dbar, blinker, fader
+    Battery, PrSensor, psia_to_dbar, blinker, fader
 from edna.config import Config, BadEntry
 
 
@@ -157,6 +163,12 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
         logger.exception("Configuration error")
         return False
 
+    try:
+        batteries = [Battery(SMBus(0)), Battery(SMBus(1))]
+    except Exception:
+        logger.exception("Battery monitoring disabled")
+        batteries = []
+
     # Samples are collected in depth order, not index order.
     depths.sort(key=lambda e: e[0])
     for target, index in depths:
@@ -180,7 +192,7 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
                          fm, sample_rate,
                          (limits["Sample"], limits["Ethanol"]),
                          checkpr,
-                         partial(checkdepth,drange))
+                         partial(checkdepth,drange), batteries)
 
 
     return True
