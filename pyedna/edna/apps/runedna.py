@@ -176,7 +176,7 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
         drange = (depth-deployment.depth_err, depth+deployment.depth_err)
         status = collect(df, index,
                          (pumps["Sample"], pumps["Ethanol"]),
-                         (valves[str(index)], valves["Ethanol"]),
+                         valves,
                          fm, sample_rate,
                          (limits["Sample"], limits["Ethanol"]),
                          checkpr,

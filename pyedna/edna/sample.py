@@ -144,7 +144,7 @@ EthanolIdx: int = 1
 
 def collect(df: Datafile, index: int,
             pumps: Tuple[periph.Pump, periph.Pump],
-            valves: Tuple[periph.Valve, periph.Valve],
+            valves: Mapping[str, periph.Valve],
             fm: periph.FlowMeter,
             rate: float,
             limits: Tuple[FlowLimits, FlowLimits],
@@ -156,10 +156,12 @@ def collect(df: Datafile, index: int,
     """
     logger = logging.getLogger("edna.sample")
     logger.info("Starting sample %d", index)
+    # Valve key
+    vkey = str(index)
     try:
         vwater, w_secs, w_ovp = flow_monitor(df, "sample."+str(index),
                                              pumps[SampleIdx],
-                                             valves[SampleIdx], fm,
+                                             valves[vkey], fm,
                                              rate,
                                              limits[SampleIdx],
                                              checkpr,
@@ -171,14 +173,24 @@ def collect(df: Datafile, index: int,
         logger.critical("Depth not maintained; sample %d aborted", index)
         return False
 
-    with valves[SampleIdx]:
+    with valves[vkey]:
         vethanol, e_secs, e_ovp = flow_monitor(None, "",
                                                pumps[EthanolIdx],
-                                               valves[EthanolIdx], fm,
+                                               valves["Ethanol"], fm,
                                                rate,
                                                limits[EthanolIdx],
                                                checkpr,
                                                lambda: (0.0, True), batts)
+        # Open all valves to relieve back-pressure
+        for key, obj in valves.items():
+            if not obj.isopened():
+                obj.open()
+        time.sleep(1)
+        for key, obj in valves.items():
+            if key == vkey:
+                continue
+            obj.close()
+
     if e_ovp:
         logger.warning("Overpressure event during ethanol pumping")
 
