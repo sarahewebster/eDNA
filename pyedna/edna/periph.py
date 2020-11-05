@@ -103,6 +103,7 @@ class Valve(object):
     The valve will be open within the Context and closed when it exits.
     """
     enable: int
+    opened: bool
     _lopen: Union[int, None]
     _lclose: Union[int, None]
 
@@ -114,6 +115,7 @@ class Valve(object):
         :param lopen: H-bridge line which opens the valve
         :param lclose: H-bridge line which closes the valve
         """
+        self.opened = False
         self.enable = enable
         self.logger = logging.getLogger("edna.valve")
         l = locals()
@@ -132,6 +134,9 @@ class Valve(object):
     def __str__(self):
         return "Valve({:d}, {:d}, {:d})".format(self.enable, self._lopen, self._lclose)
 
+    def isopened(self) -> bool:
+        return self.opened
+
     def open(self):
         """
         Open the valve
@@ -140,6 +145,7 @@ class Valve(object):
         GPIO.output(self._lopen, GPIO.HIGH)
         time.sleep(0.1)
         GPIO.output(self._lopen, GPIO.LOW)
+        self.opened = True
         self.logger.info("%s opened", str(self))
 
     def close(self):
@@ -150,6 +156,7 @@ class Valve(object):
         GPIO.output(self._lclose, GPIO.HIGH)
         time.sleep(0.1)
         GPIO.output(self._lclose, GPIO.LOW)
+        self.opened = False
         self.logger.info("%s closed", str(self))
 
     def __enter__(self):
