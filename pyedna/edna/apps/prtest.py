@@ -7,7 +7,7 @@ import argparse
 import time
 import os.path
 import logging
-from typing import Tuple, Any, Dict
+from typing import Tuple, Any, Dict, Optional
 from collections import OrderedDict, namedtuple
 try:
     from Adafruit_ADS1x15 import ADS1115 # type: ignore
@@ -16,16 +16,13 @@ except ImportError:
 from edna import ticker
 from edna.periph import PrSensor, psia_to_dbar
 from edna.config import Config, BadEntry
+from edna.sample import Datafile
 
 
-class DataWriter(object):
-    def __init__(self, outf: Any):
-        self.outf = outf
-
-    def writerec(self, rec: OrderedDict):
-        for k, v in rec.items():
-            print("{}={} ".format(k, v), end="", file=self.outf)
-        print("", file= self.outf)
+def writerec(rec: OrderedDict):
+    for k, v in rec.items():
+        print("{}={} ".format(k, v), end="")
+    print("")
 
 
 def parse_cmdline() -> argparse.Namespace:
@@ -41,10 +38,12 @@ def parse_cmdline() -> argparse.Namespace:
                         help="sensor sampling rate in Hz")
     parser.add_argument("--dbars", action="store_true",
                         help="return gauge pressure in decibars")
+    parser.add_argument("--out", type=argparse.FileType("w"),
+                        help="write data to output file")
     return parser.parse_args()
 
 
-def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
+def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bool:
     logger = logging.getLogger()
     # Extract parameters from configuration files
     try:
@@ -69,11 +68,14 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
         for tick in ticker(interval):
             psi = sens[args.sensor].read()
             if args.dbars:
-                wtr.writerec(OrderedDict(elapsed=round(tick-t0, 3),
-                                         pr=round(psia_to_dbar(psi), 3)))
+                rec = OrderedDict(elapsed=round(tick-t0, 3),
+                                  pr=round(psia_to_dbar(psi), 3))
             else:
-                wtr.writerec(OrderedDict(elapsed=round(tick-t0, 3),
-                                         pr=round(psi, 3)))
+                rec = OrderedDict(elapsed=round(tick-t0, 3),
+                                  pr=round(psi, 3))
+            writerec(rec)
+            if df:
+                df.add_record("pr", rec, ts=tick)
     except KeyboardInterrupt:
         print("done", file=sys.stderr)
 
@@ -95,7 +97,10 @@ def main() -> int:
                         stream=sys.stderr)
     status = False
     try:
-        status = runtest(cfg, args, DataWriter(sys.stdout))
+        if args.out:
+            status = runtest(cfg, args, Datafile(args.out))
+        else:
+            status = runtest(cfg, args, None)
     except Exception as e:
         logging.exception("Error running the sensor test")
 

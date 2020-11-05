@@ -7,7 +7,7 @@ import argparse
 import time
 import os.path
 import logging
-from typing import Tuple, Any, Dict
+from typing import Tuple, Any, Dict, Optional
 from collections import OrderedDict, namedtuple
 try:
     import RPi.GPIO as GPIO # type: ignore
@@ -20,19 +20,13 @@ except ImportError:
 from edna import ticker
 from edna.periph import Valve, FlowMeter, Pump, PrSensor
 from edna.config import Config, BadEntry
+from edna.sample import Datafile
 
 
-#PrSensor = namedtuple("PrSensor", ["chan", "gain", "prmax"])
-
-
-class DataWriter(object):
-    def __init__(self, outf: Any):
-        self.outf = outf
-
-    def writerec(self, rec: OrderedDict):
-        for k, v in rec.items():
-            print("{}={} ".format(k, v), end="", file=self.outf)
-        print("", file= self.outf)
+def writerec(rec: OrderedDict):
+    for k, v in rec.items():
+        print("{}={} ".format(k, v), end="")
+    print("")
 
 
 def parse_cmdline() -> argparse.Namespace:
@@ -52,10 +46,12 @@ def parse_cmdline() -> argparse.Namespace:
                         help="flow meter sampling rate in Hz (default: %(default)s)")
     parser.add_argument("--clean", action="store_true",
                         help="restore boot-up GPIO settings on exit")
+    parser.add_argument("--out", type=argparse.FileType("w"),
+                        help="write data to output file")
     return parser.parse_args()
 
 
-def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
+def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bool:
     logger = logging.getLogger()
     # Extract parameters from configuration files
     try:
@@ -108,9 +104,12 @@ def runtest(cfg: Config, args: argparse.Namespace, wtr: DataWriter) -> bool:
                 for tick in ticker(interval):
                     amount, secs = fm.amount()
                     pr, pr_ok = checkpr()
-                    wtr.writerec(OrderedDict(elapsed=round(secs, 3),
-                                             vol=round(amount, 3),
-                                             pr=round(pr, 3)))
+                    rec = OrderedDict(elapsed=round(secs, 3),
+                                      vol=round(amount, 3),
+                                      pr=round(pr, 3))
+                    writerec(rec)
+                    if df:
+                        df.add_record("flow", rec, ts=tick)
     except KeyboardInterrupt:
         print("done", file=sys.stderr)
 
@@ -139,7 +138,10 @@ def main() -> int:
 
     status = False
     try:
-        status = runtest(cfg, args, DataWriter(sys.stdout))
+        if args.out:
+            status = runtest(cfg, args, Datafile(args.out))
+        else:
+            status = runtest(cfg, args, None)
     except Exception as e:
         logging.exception("Error running the pump test")
     finally:
