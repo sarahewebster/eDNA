@@ -148,7 +148,8 @@ def collect(df: Datafile, index: int,
             limits: Tuple[FlowLimits, FlowLimits],
             checkpr: Callable[[], Tuple[float, bool]],
             checkdepth: Callable[[], Tuple[float, bool]],
-            batts: List[periph.Battery] = []) -> bool:
+            batts: List[periph.Battery] = [],
+            bphold: float = 5.0) -> bool:
     """
     Run a complete eDNA sample sequence.
     """
@@ -185,7 +186,7 @@ def collect(df: Datafile, index: int,
             for key, obj in valves.items():
                 if not obj.isopened():
                     obj.open()
-            time.sleep(1)
+            time.sleep(bphold)
             for key, obj in valves.items():
                 if (key == vkey) or (key == "Ethanol"):
                     continue
