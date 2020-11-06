@@ -28,7 +28,7 @@ try:
     from smbus import SMBus # type: ignore
 except ImportError:
     from edna.mocksmbus import SMBus
-from edna import ticker
+from edna import ticker, __version__
 from edna.sample import Datafile, FlowLimits, collect, seekdepth
 from edna.periph import Valve, Pump, FlowMeter, LED, \
     Battery, PrSensor, psia_to_dbar, blinker, fader
@@ -61,14 +61,18 @@ class Deployment(object):
 
 
 def parse_cmdline() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run an eDNA deployment")
+    parser = argparse.ArgumentParser(description="Run an eDNA deployment",
+                                     epilog="Version: " + __version__)
     parser.set_defaults(syscfg=os.environ.get("EDNA_SYSCFG", os.path.expanduser("~/.config/edna/system.cfg")),
                         datadir=os.environ.get("EDNA_DATADIR", os.path.expanduser("~/data")),
+                        id=os.environ.get("EDNA_DEPLOYMENT_ID", ""),
                         outbox=os.environ.get("EDNA_OUTBOX", os.path.expanduser("~/OUTBOX")))
     parser.add_argument("cfg", metavar="FILE",
                         help="deployment configuration file")
     parser.add_argument("--syscfg", metavar="FILE",
                         help="system confguration file (default: %(default)s)")
+    parser.add_argument("--id",
+                        help="unique ID for this deployment")
     parser.add_argument("--datadir", metavar="DIR",
                         help="data directory (default: %(default)s)")
     parser.add_argument("--clean", action="store_true",
@@ -232,6 +236,11 @@ def main() -> int:
     with open(os.path.join(deployment.dir, "deploy.cfg"), "w") as fp:
         cfg.write(fp)
 
+    # Save deployment ID if specified
+    if args.id != "":
+        with open(os.path.join(deployment.dir, "id"), "w") as fp:
+            print(args.id, file=fp)
+
     logger = logging.getLogger()
     # eDNA uses the Broadcom SOC pin numbering scheme
     GPIO.setmode(GPIO.BCM)
@@ -247,16 +256,16 @@ def main() -> int:
             status = runedna(cfg, deployment, Datafile(fp))
     except Exception:
         logger.exception("Deployment aborted with an exception")
-    else:
-        os.makedirs(args.outbox, exist_ok=True)
-        # Archive the deployment directory to the OUTBOX
-        arpath = os.path.join(args.outbox, "edna_" + deployment.id + ".tar.gz")
-        logger.info("Archiving deployment directory to %s", arpath)
-        with tarfile.open(arpath, "w:gz") as tar:
-            tar.add(deployment.dir)
-    finally:
-        if args.clean:
-            GPIO.cleanup()
+
+    os.makedirs(args.outbox, exist_ok=True)
+    # Archive the deployment directory to the OUTBOX
+    arpath = os.path.join(args.outbox, "edna_" + deployment.id + ".tar.gz")
+    logger.info("Archiving deployment directory to %s", arpath)
+    with tarfile.open(arpath, "w:gz") as tar:
+        tar.add(deployment.dir)
+
+    if args.clean:
+        GPIO.cleanup()
 
     return 0 if status else 1
 
