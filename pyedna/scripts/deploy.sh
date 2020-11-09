@@ -74,7 +74,7 @@ esac
 # we can safely exit from the current shell and keep
 # the data collection program running.
 tmux start-server
-if ! tmux has-session -t deploy; then
+if ! tmux has-session -t deploy 2> /dev/null; then
     tmux -u new-session -s deploy -n dacq -d
     tmux new-window -n data -t deploy
     tmux select-window -t deploy:0
@@ -88,5 +88,6 @@ done
 tmux send-keys -t deploy:0 "export PATH="$PATH C-m
 # Run the data collection in one window and open the other
 # window in the data directory.
-tmux send-keys -t deploy:0 "cd $CFGDIR && runedna $cfgfile" C-m
+tmux send-keys -t deploy:0 "cd $CFGDIR; runedna $cfgfile" C-m
 tmux send-keys -t deploy:1 "cd $EDNA_DATADIR && ls" C-m
+echo "run 'tmux attach -t deploy' to view output"
