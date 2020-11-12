@@ -24,6 +24,7 @@ Gnd=25
 [Foo]
 Bar = 2.5
 Baz = 42
+Array = 5, 6, 7, 8
 [Adc]
 Addr=0x48
 Gain=2/3
@@ -54,6 +55,10 @@ class ConfigTestCase(unittest.TestCase):
     def test_get_float(self):
         x = self.cfg.get_float('Foo', 'Bar')
         self.assertEqual(x, 2.5)
+
+    def test_get_array(self):
+        x = self.cfg.get_array('Foo', 'Array')
+        self.assertEqual(x, [5., 6., 7., 8.])
 
     def test_override(self):
         x = self.cfg.get_int('Foo', 'Baz')

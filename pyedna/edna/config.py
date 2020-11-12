@@ -110,3 +110,13 @@ class Config(ConfigParser):
         except Error:
             raise BadEntry("/".join([section, key]))
         return value
+
+    def get_array(self, section: str, key: str) -> List[float]:
+        s = self.get_string(section, key)
+        f = []
+        try:
+            for val in s.split(","):
+                f.append(float(val.strip()))
+        except ValueError:
+            raise BadEntry("/".join([section, key]))
+        return f
