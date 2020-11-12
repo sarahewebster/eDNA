@@ -248,10 +248,18 @@ class PrSensor(object):
         self.chan = chan
         self.coeff = coeff
 
-    def read(self) -> float:
+    def read_volts(self) -> float:
+        """
+        Return the sensor value in volts.
+        """
         x = self.adc.read_adc(self.chan, self.gain)
-        v = self.vmax*x/32767.0
-        return self.coeff[0] + v*self.coeff[1]
+        return self.vmax*x/32767.0
+
+    def read(self) -> float:
+        """
+        Return the sensor value in psi
+        """
+        return self.coeff[0] + self.read_volts()*self.coeff[1]
 
     def read_burst(self, n: int, interval: float) -> float:
         """
@@ -280,6 +288,13 @@ def psia_to_dbar(p: float) -> float:
     water surface.
     """
     return (p - 14.7)*0.689476
+
+
+def psi_to_dbar(p: float) -> float:
+    """
+    Convert a gauge pressure value from psi to decibars.
+    """
+    return p*0.689476
 
 
 def sawtooth(count: int):
