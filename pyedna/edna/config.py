@@ -11,7 +11,7 @@ from typing import Any, List, Dict
 # Required keys for various sections
 valve_req: List[str] = ["enable", "in1", "in2"]
 motor_req: List[str] = ["enable"]
-pressure_req: List[str] = ["chan", "gain"]
+pressure_req: List[str] = ["chan", "gain", "coeff"]
 collect_req: List[str] = ["amount", "time"]
 sample_req: List[str] = ["depth"]
 

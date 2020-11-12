@@ -31,7 +31,7 @@ except ImportError:
 from edna import ticker, __version__
 from edna.sample import Datafile, FlowLimits, collect, seekdepth
 from edna.periph import Valve, Pump, FlowMeter, LED, \
-    Battery, PrSensor, psia_to_dbar, blinker, fader
+    Battery, PrSensor, psi_to_dbar, blinker, fader
 from edna.config import Config, BadEntry
 
 
@@ -113,10 +113,12 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
                       busnum=cfg.get_int('Adc', 'Bus'))
         pr["Filter"] = PrSensor(adc,
                                 cfg.get_int('Pressure.Filter', 'Chan'),
-                                cfg.get_expr('Pressure.Filter', 'Gain'))
+                                cfg.get_expr('Pressure.Filter', 'Gain'),
+                                coeff=cfg.get_array('Pressure.Filter', 'Coeff'))
         pr["Env"] = PrSensor(adc,
                              cfg.get_int('Pressure.Env', 'Chan'),
-                             cfg.get_expr('Pressure.Env', 'Gain'))
+                             cfg.get_expr('Pressure.Env', 'Gain'),
+                             coeff=cfg.get_array('Pressure.Env', 'Coeff'))
 
         prmax = cfg.get_float('Pressure.Filter', 'Max')
         def checkpr() -> Tuple[float, bool]:
@@ -124,7 +126,7 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
             return psi, psi < prmax
 
         def checkdepth(limits: Tuple[float, float]) -> Tuple[float, bool]:
-            dbar = psia_to_dbar(pr["Env"].read())
+            dbar = psi_to_dbar(pr["Env"].read())
             return dbar, limits[0] <= dbar <= limits[1]
 
         pumps = dict()

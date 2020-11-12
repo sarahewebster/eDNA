@@ -14,7 +14,7 @@ try:
 except ImportError:
     from edna.mockpr import Adc as ADS1115
 from edna import ticker
-from edna.periph import PrSensor, psia_to_dbar
+from edna.periph import PrSensor, psi_to_dbar
 from edna.config import Config, BadEntry
 from edna.sample import Datafile
 
@@ -37,7 +37,7 @@ def parse_cmdline() -> argparse.Namespace:
                         default=2,
                         help="sensor sampling rate in Hz")
     parser.add_argument("--dbars", action="store_true",
-                        help="return gauge pressure in decibars")
+                        help="output gauge pressure in decibars")
     parser.add_argument("--out", type=argparse.FileType("w"),
                         help="write data to output file")
     return parser.parse_args()
@@ -52,10 +52,12 @@ def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bo
                       busnum=cfg.get_int('Adc', 'Bus'))
         sens["env"] = PrSensor(adc,
                                cfg.get_int('Pressure.Env', 'Chan'),
-                               cfg.get_expr('Pressure.Env', 'Gain'))
+                               cfg.get_expr('Pressure.Env', 'Gain'),
+                               coeff=cfg.get_array('Pressure.Env', 'Coeff'))
         sens["filter"] = PrSensor(adc,
                                   cfg.get_int('Pressure.Filter', 'Chan'),
-                                  cfg.get_expr('Pressure.Filter', 'Gain'))
+                                  cfg.get_expr('Pressure.Filter', 'Gain'),
+                                  coeff=cfg.get_array('Pressure.Filter', 'Coeff'))
 
     except BadEntry as e:
         logger.exception("Configuration error")
@@ -69,10 +71,10 @@ def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bo
             psi = sens[args.sensor].read()
             if args.dbars:
                 rec = OrderedDict(elapsed=round(tick-t0, 3),
-                                  pr=round(psia_to_dbar(psi), 3))
+                                  dbars=round(psi_to_dbar(psi), 3))
             else:
                 rec = OrderedDict(elapsed=round(tick-t0, 3),
-                                  pr=round(psi, 3))
+                                  psi=round(psi, 3))
             writerec(rec)
             if df:
                 df.add_record("pr", rec, ts=tick)
