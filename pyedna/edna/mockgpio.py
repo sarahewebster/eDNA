@@ -6,7 +6,7 @@ from . import ticker
 import threading
 import logging
 from collections import namedtuple
-from typing import Callable, Union, List, Dict, TypedDict, Any, Tuple
+from typing import Callable, Union, List, Dict, Any, Tuple
 
 
 logging.getLogger("gpio").addHandler(logging.NullHandler())

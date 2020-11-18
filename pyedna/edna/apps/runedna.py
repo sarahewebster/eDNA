@@ -17,7 +17,7 @@ from collections import OrderedDict
 # integration testing.
 try:
     import RPi.GPIO as GPIO # type: ignore
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     import edna.mockgpio as GPIO # type: ignore
     GPIO.detector_freq = 20
 try:
