@@ -211,7 +211,7 @@ def seekdepth(df: Datafile,
     """
     Wait for the system to reach a specified depth band. Return (depth,
     True) if the target depth was reached or (depth, False) if the time
-    limit was exceeded.
+    limit was exceeded. A time limit of 0 means wait forever.
     """
     t0 = time.time()
     period = 1./rate
@@ -225,6 +225,6 @@ def seekdepth(df: Datafile,
                                       a=round(a, 3), soc=soc), ts=tick)
         if ok:
             break
-        if (tick - t0) > tlimit:
+        if tlimit > 0 and (tick - t0) > tlimit:
             return depth, False
     return depth, True
