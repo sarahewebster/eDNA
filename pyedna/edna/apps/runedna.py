@@ -10,6 +10,7 @@ import time
 import logging
 import datetime
 import tarfile
+import signal
 from typing import Callable, Tuple, NamedTuple
 from functools import partial
 from collections import OrderedDict
@@ -58,6 +59,16 @@ class Deployment(object):
         self.seek_time = seek_time
         self.depth_err = depth_err
         self.pr_rate = pr_rate
+
+
+class AbortDeployment(Exception):
+    pass
+
+
+def abort(sig: int, frame):
+    raise AbortDeployment("Abort on signal {:d}; {}:{:d}".format(sig,
+                                                                 frame.f_code.co_filename,
+                                                                 frame.f_lineno))
 
 
 def parse_cmdline() -> argparse.Namespace:
@@ -242,6 +253,9 @@ def main() -> int:
     if args.id != "":
         with open(os.path.join(deployment.dir, "id"), "w") as fp:
             print(args.id, file=fp)
+
+    signal.signal(signal.SIGINT, abort)
+    signal.signal(signal.SIGTERM, abort)
 
     logger = logging.getLogger()
     # eDNA uses the Broadcom SOC pin numbering scheme
