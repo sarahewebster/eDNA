@@ -14,7 +14,7 @@ try:
 except ImportError:
     from edna.mockpr import Adc as ADS1115
 from edna import ticker
-from edna.periph import PrSensor, psi_to_dbar
+from edna.periph import PrSensor, psia_to_dbar
 from edna.config import Config, BadEntry
 from edna.sample import Datafile
 
@@ -71,7 +71,7 @@ def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bo
             psi = sens[args.sensor].read()
             if args.dbars:
                 rec = OrderedDict(elapsed=round(tick-t0, 3),
-                                  dbars=round(psi_to_dbar(psi), 3))
+                                  dbars=round(psia_to_dbar(psi), 3))
             else:
                 rec = OrderedDict(elapsed=round(tick-t0, 3),
                                   psi=round(psi, 3))

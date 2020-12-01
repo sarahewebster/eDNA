@@ -32,7 +32,7 @@ except ImportError:
 from edna import ticker, __version__
 from edna.sample import Datafile, FlowLimits, collect, seekdepth
 from edna.periph import Valve, Pump, FlowMeter, LED, \
-    Battery, PrSensor, psi_to_dbar, blinker, fader
+    Battery, PrSensor, psia_to_dbar, blinker, fader
 from edna.config import Config, BadEntry
 
 
@@ -137,7 +137,7 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
             return psi, psi < prmax
 
         def checkdepth(limits: Tuple[float, float]) -> Tuple[float, bool]:
-            dbar = psi_to_dbar(pr["Env"].read())
+            dbar = psia_to_dbar(pr["Env"].read())
             return dbar, limits[0] <= dbar <= limits[1]
 
         pumps = dict()
