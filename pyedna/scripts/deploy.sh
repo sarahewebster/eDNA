@@ -22,6 +22,18 @@ prompt ()
     fi
 }
 
+UNIT="runedna@deploy.service"
+
+if systemctl --user --quiet is-active "$UNIT"; then
+    ans=$(prompt "Abort active deployment (y/n)" "n")
+    case "$ans" in
+        n|N|no)
+            exit 0
+            ;;
+    esac
+    systemctl --user stop "$UNIT"
+fi
+
 mkdir -p $CFGDIR
 
 trap "echo 'Aborting'; exit 1" 1 2 3 15
@@ -70,24 +82,16 @@ case "$resp" in
     ;;
 esac
 
-# Run the data collection program in a Tmux session so
-# we can safely exit from the current shell and keep
-# the data collection program running.
-tmux start-server
-if ! tmux has-session -t deploy 2> /dev/null; then
-    tmux -u new-session -s deploy -n dacq -d
-    tmux new-window -n data -t deploy
-    tmux select-window -t deploy:0
+echo -n "Starting deployment, standby ..."
+if systemctl --user start "$UNIT"; then
+    sleep 5
+    if systemctl --user --quiet is-active "$UNIT"; then
+        echo "done"
+        exit 0
+    else
+        echo "FAILED"
+        systemctl --user --no-pager -l status "$UNIT"
+    fi
 fi
-# Export all of the EDNA_* environment variables to
-# the Tmux session
-for v in $(env | grep EDNA_); do
-    tmux send-keys -t deploy:0 "export $v" C-m
-done
-# Export PATH
-tmux send-keys -t deploy:0 "export PATH="$PATH C-m
-# Run the data collection in one window and open the other
-# window in the data directory.
-tmux send-keys -t deploy:0 "cd $CFGDIR; runedna $cfgfile" C-m
-tmux send-keys -t deploy:1 "cd $EDNA_DATADIR && ls" C-m
-echo "run 'tmux attach -t deploy' to view output"
+
+exit 1
