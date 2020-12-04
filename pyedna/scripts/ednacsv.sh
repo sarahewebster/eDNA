@@ -37,9 +37,9 @@ echo "done"
 
 outfile="result_${id}.csv"
 echo -n "Creating $outfile ... "
-echo "time,sample,elapsed,vwater,vethanol,overpressure" > $outfile
+echo "time,sample,elapsed,vwater,vethanol,overpressure,deptherror" > $outfile
 jq -r -M \
-   '{t: .t, ev: (.event / "."), data: .data}|select( .ev[0] == "result")|[.t, .ev[1], .data.elapsed, .data.vwater, .data.vethanol, .data.overpressure]|@csv' $infile >> $outfile
+   '{t: .t, ev: (.event / "."), data: .data}|select( .ev[0] == "result")|[.t, .ev[1], .data.elapsed, .data.vwater, .data.vethanol, .data.overpressure, .data.deptherror // false]|@csv' $infile >> $outfile
 echo "done"
 
 outfile="battery_${id}.csv"

@@ -82,16 +82,15 @@ def flow_monitor(df: Optional[Datafile], event: str,
                  rate: float, stop: FlowLimits,
                  checkpr: Callable[[], Tuple[float, bool]],
                  checkdepth: Callable[[], Tuple[float, bool]],
-                 batts: List[periph.Battery] = []) -> Tuple[float, float, bool]:
+                 batts: List[periph.Battery] = []) -> Tuple[float, float, bool, bool]:
     """
+
     Monitor a flow meter until the requested amount of fluid is collected
     (stop.amount), the time limit (stop.time) is exceeded, or an error
     condition is met. The return value is a tuple of; total fluid amount in
-    liters, elapsed time in seconds, and a boolean flag which is True if an
-    overpressure condition was detected.
-
-    Errors:
-      - checkdepth returns _, False; raises a DepthError exception
+    liters, elapsed time in seconds, and two boolean flags; one which is True if an
+    overpressure condition was detected and another which is True if the depth
+    range was exceeded.
 
     :param df: data file or None
     :param event: tag for data file records
@@ -105,7 +104,7 @@ def flow_monitor(df: Optional[Datafile], event: str,
     """
     logger = logging.getLogger("edna.sample")
     period = 1./rate
-    overpressure = False
+    overpressure, outofrange = False, False
     t_stop = time.time() + stop.time
     fm.reset()
     with pump:
@@ -121,6 +120,8 @@ def flow_monitor(df: Optional[Datafile], event: str,
                                                  depth=round(depth, 3)), ts=tick)
             if not overpressure:
                 overpressure = not pr_ok
+            if not outofrange:
+                outofrange = not depth_ok
             if amount >= stop.amount:
                 break
             if tick > t_stop:
@@ -134,7 +135,7 @@ def flow_monitor(df: Optional[Datafile], event: str,
                               OrderedDict(v=round(v, 3),
                                           a=round(a, 3), soc=soc), ts=tick)
 
-    return amount, secs, overpressure
+    return amount, secs, overpressure, outofrange
 
 
 SampleIdx: int = 0
@@ -159,29 +160,31 @@ def collect(df: Datafile, index: int,
     vkey = str(index)
     try:
         with valves[vkey]:
-            vwater, w_secs, w_ovp = flow_monitor(df, "sample."+str(index),
-                                                 pumps[SampleIdx],
-                                                 fm,
-                                                 rate,
-                                                 limits[SampleIdx],
-                                                 checkpr,
-                                                 checkdepth, batts)
+            vwater, w_secs, w_ovp, oor = flow_monitor(df, "sample."+str(index),
+                                                      pumps[SampleIdx],
+                                                      fm,
+                                                      rate,
+                                                      limits[SampleIdx],
+                                                      checkpr,
+                                                      checkdepth, batts)
 
         if w_ovp:
             logger.warning("Overpressure event during sample pumping")
-    except DepthError:
-        logger.critical("Depth not maintained; sample %d aborted", index)
+        if oor:
+            logger.warning("Depth out of range during sample")
+    except Exception:
+        logger.exception("Error during sample collection")
         return False
 
     with valves[vkey]:
         with valves["Ethanol"]:
-            vethanol, e_secs, e_ovp = flow_monitor(None, "",
-                                                   pumps[EthanolIdx],
-                                                   fm,
-                                                   rate,
-                                                   limits[EthanolIdx],
-                                                   checkpr,
-                                                   lambda: (0.0, True), batts)
+            vethanol, e_secs, e_ovp, _ = flow_monitor(None, "",
+                                                      pumps[EthanolIdx],
+                                                      fm,
+                                                      rate,
+                                                      limits[EthanolIdx],
+                                                      checkpr,
+                                                      lambda: (0.0, True), batts)
             # Open all valves to relieve back-pressure
             for key, obj in valves.items():
                 if not obj.isopened():
@@ -199,11 +202,12 @@ def collect(df: Datafile, index: int,
                   OrderedDict(elapsed=round(w_secs+e_secs, 3),
                               vwater=round(vwater, 3),
                               vethanol=round(vethanol, 3),
-                              overpressure=(w_ovp or e_ovp)))
+                              overpressure=w_ovp,
+                              deptherror=oor))
     return True
 
 
-def seekdepth(df: Datafile,
+def seekdepth(df: Optional[Datafile],
               chkdepth: Callable[[], Tuple[float, bool]],
               rate: float,
               tlimit: float,
@@ -217,12 +221,13 @@ def seekdepth(df: Datafile,
     period = 1./rate
     for tick in ticker(period):
         depth, ok = chkdepth()
-        df.add_record("depth", OrderedDict(depth=round(depth, 3)), ts=tick)
-        for i, b in enumerate(batts):
-            v, a, soc = read_battery(b)
-            df.add_record("battery-"+str(i),
-                          OrderedDict(v=round(v, 3),
-                                      a=round(a, 3), soc=soc), ts=tick)
+        if df is not None:
+            df.add_record("depth", OrderedDict(depth=round(depth, 3)), ts=tick)
+            for i, b in enumerate(batts):
+                v, a, soc = read_battery(b)
+                df.add_record("battery-"+str(i),
+                              OrderedDict(v=round(v, 3),
+                                          a=round(a, 3), soc=soc), ts=tick)
         if ok:
             break
         if tlimit > 0 and (tick - t0) > tlimit:
