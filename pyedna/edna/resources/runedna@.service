@@ -1,0 +1,17 @@
+# -*- conf -*-
+[Unit]
+Description=Run an eDNA data collection sequence
+# A dbus session is required to control this service
+# from an HTTP server
+Requires=dbus.socket
+
+[Service]
+Type=exec
+# The audio group is allowed to use realtime priorities. We need
+# this for the thread that monitors the flow-meter pulse counter
+# Group=audio
+# CPUSchedulingPolicy=fifo
+# CPUSchedulingPriority=89
+# LimitRTPRIO=90
+ExecStart=%h/.local/bin/runedna --datadir %h/data %h/config/%i.cfg
+Restart=no

@@ -14,7 +14,9 @@ setup(name="edna",
       author_email="mikek@apl.uw.edu",
       license="MIT",
       packages=["edna", "edna.apps"],
-      package_data={"edna": ["py.typed", "resources/eDNA.cfg"],
+      package_data={"edna": ["py.typed",
+                             "resources/eDNA.cfg",
+                             "resources/runedna@.service"],
                     "edna.apps": ["py.typed"]},
       install_requires=[
           'importlib-metadata ~= 1.0 ; python_version < "3.8"'
@@ -25,7 +27,8 @@ setup(name="edna",
               "runedna=edna.apps.runedna:main",
               "pumptest=edna.apps.pumptest:main",
               "prtest=edna.apps.prtest:main",
-              "installcfg=edna.apps.installcfg:main"
+              "installcfg=edna.apps.installcfg:main",
+              "installsvc=edna.apps.installsvc:main"
           ]
       },
       zip_safe=False)
