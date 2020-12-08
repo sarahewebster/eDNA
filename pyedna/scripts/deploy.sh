@@ -45,7 +45,6 @@ done
 
 seekerr=$(prompt "Allowed error when depth seeking (dbar)" 2)
 deptherr=$(prompt "Allowed error when holding depth (dbar)" 2)
-prrate=$(prompt "Pressure sampling rate (hz)" 4)
 seektime=$(prompt "Maximum depth seek time (sec)" 1800)
 
 cfgfile=$CFGDIR/deploy.cfg
@@ -54,7 +53,7 @@ cat<<EOF >> $cfgfile
 [Deployment]
 SeekErr = $seekerr
 DepthErr = $deptherr
-PrRate = $prrate
+PrRate = 4
 SeekTime = $seektime
 
 EOF
@@ -71,6 +70,7 @@ case "$resp" in
         s_time=$(prompt "Sample time limit (secs)" "60")
         e_amount=$(prompt "Ethanol amount (liters)" "0.01")
         e_time=$(prompt "Ethanol time limit (secs)" "20")
+        p_max=$(prompt "Maximum filter pressure (psi)" "12")
         {
             echo "[Collect.Sample]"
             echo "Amount = $s_amount"
@@ -78,6 +78,8 @@ case "$resp" in
             echo "[Collect.Ethanol]"
             echo "Amount = $e_amount"
             echo "Time = $e_time"
+            echo "[Pressure.Filter]"
+            echo "Max = $p_max"
         } >> $cfgfile
     ;;
 esac
