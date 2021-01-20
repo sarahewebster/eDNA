@@ -126,8 +126,6 @@ def flow_monitor(df: Optional[Datafile], event: str,
                 break
             if tick > t_stop:
                 break
-            if not depth_ok:
-                raise DepthError()
         if df is not None:
             for i, b in enumerate(batts):
                 v, a, soc = read_battery(b)
