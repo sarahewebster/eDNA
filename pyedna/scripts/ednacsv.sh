@@ -18,15 +18,27 @@ type jq >&2
 
 infile="$1"
 [[ -z $infile ]] && {
-    echo "Missing input file" 2>&1
+    echo "Missing input file" 1>&2
     echo "Usage: ${0##*/} infile" 1>&2
     exit 1
 }
 
-# Extract the deployment ID from the filename
 base="${infile##*/}"
-base="${base%.*}"
+# Extract the deployment ID from the filename
+base="${base%%.*}"
 id=$(cut -f2 -d_ <<<"$base")
+
+case "$infile" in
+    *.tar.gz)
+        echo "Unpacking archive $infile" 1>&2
+        tar --strip-components=3 -x -v -z -f "$infile" && cd "$base"
+        infile="${base}.ndjson"
+        echo "CSV files will be stored in ${base}/" 1>&2
+        ;;
+    *)
+        ;;
+esac
+
 
 outfile="sample_${id}.csv"
 echo -n "Creating $outfile ... "
