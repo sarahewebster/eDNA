@@ -120,3 +120,10 @@ class Config(ConfigParser):
         except ValueError:
             raise BadEntry("/".join([section, key]))
         return f
+
+    def get_bool(self, section: str, key: str) -> bool:
+        try:
+            value = self.getboolean(section, key, fallback=False)
+        except ValueError:
+            raise BadEntry("/".join([section, key]))
+        return value

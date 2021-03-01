@@ -28,6 +28,8 @@ Array = 5, 6, 7, 8
 [Adc]
 Addr=0x48
 Gain=2/3
+[Deployment]
+Downcast = yes
 """
 
 OVERRIDE = """
@@ -72,6 +74,14 @@ class ConfigTestCase(unittest.TestCase):
         self.assertRaises(BadEntry,
                           self.cfg.get_int,
                           'Valve.5', 'Enable')
+
+    def test_get_bool(self):
+        x = self.cfg.get_bool('Deployment', 'Downcast')
+        self.assertEqual(x, True)
+
+    def test_bool_default(self):
+        x = self.cfg.get_bool('Foo', 'NotFound')
+        self.assertEqual(x, False)
 
 
 class ValidationTest(unittest.TestCase):
