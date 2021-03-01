@@ -7,7 +7,7 @@ import argparse
 import time
 import os.path
 import logging
-from typing import Tuple, Any, Dict, Optional
+from typing import Tuple, Any, Dict, Optional, Callable
 from collections import OrderedDict, namedtuple
 try:
     from Adafruit_ADS1x15 import ADS1115 # type: ignore
@@ -17,6 +17,7 @@ from edna import ticker
 from edna.periph import PrSensor, psia_to_dbar
 from edna.config import Config, BadEntry
 from edna.sample import Datafile
+from edna.ema import EMA
 
 
 def writerec(rec: OrderedDict):
@@ -40,6 +41,9 @@ def parse_cmdline() -> argparse.Namespace:
                         help="output gauge pressure in decibars")
     parser.add_argument("--out", type=argparse.FileType("w"),
                         help="write data to output file")
+    parser.add_argument("--alpha", type=float,
+                        default=0,
+                        help="moving-average filter coefficient (default: %(default)f)")
     return parser.parse_args()
 
 
@@ -63,12 +67,18 @@ def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bo
         logger.exception("Configuration error")
         return False
 
+    prfilt: Callable[[float], float]
+    if args.alpha > 0:
+        prfilt = EMA(args.alpha)
+    else:
+        prfilt = lambda x: x
+
     t0 = time.time()
     interval = 1./args.rate
     print("Enter ctrl-c to exit ...", file=sys.stderr)
     try:
         for tick in ticker(interval):
-            psi = sens[args.sensor].read()
+            psi = prfilt(sens[args.sensor].read())
             if args.dbars:
                 rec = OrderedDict(elapsed=round(tick-t0, 3),
                                   dbars=round(psia_to_dbar(psi), 3))

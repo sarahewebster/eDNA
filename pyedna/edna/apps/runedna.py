@@ -34,6 +34,7 @@ from edna.sample import Datafile, FlowLimits, collect, seekdepth
 from edna.periph import Valve, Pump, FlowMeter, LED, \
     Battery, PrSensor, psia_to_dbar, blinker, fader
 from edna.config import Config, BadEntry
+from edna.ema import EMA
 
 
 class LedCtl(NamedTuple):
@@ -90,6 +91,9 @@ def parse_cmdline() -> argparse.Namespace:
                         help="restore boot-up GPIO settings on exit")
     parser.add_argument("--debug", action="store_true",
                         help="more verbose deployment log")
+    parser.add_argument("--alpha", type=float,
+                        default=0.22,
+                        help="moving-average filter coefficient (default: %(default)f)")
     return parser.parse_args()
 
 
@@ -113,7 +117,10 @@ def init_logging(datadir: str, id: str, debug: bool = False):
     logger.addHandler(ch)
 
 
-def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
+def runedna(cfg: Config,
+            deployment: Deployment,
+            df: Datafile,
+            prfilt: Callable[[float], float]) -> bool:
     logger = logging.getLogger()
     logger.info("Starting deployment: %s", deployment.id)
 
@@ -130,6 +137,8 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
                              cfg.get_int('Pressure.Env', 'Chan'),
                              cfg.get_expr('Pressure.Env', 'Gain'),
                              coeff=cfg.get_array('Pressure.Env', 'Coeff'))
+        # Discard the first sample
+        psia_to_dbar(pr["Env"].read())
 
         prmax = cfg.get_float('Pressure.Filter', 'Max')
         def checkpr() -> Tuple[float, bool]:
@@ -138,7 +147,7 @@ def runedna(cfg: Config, deployment: Deployment, df: Datafile) -> bool:
 
         def checkdepth(limits: Tuple[float, float]) -> Tuple[float, bool]:
             dbar = psia_to_dbar(pr["Env"].read())
-            return dbar, limits[0] <= dbar <= limits[1]
+            return prfilt(dbar), limits[0] <= dbar <= limits[1]
 
         pumps = dict()
         for key in ("Sample", "Ethanol"):
@@ -265,11 +274,17 @@ def main() -> int:
     # state (input).
     GPIO.setwarnings(False)
 
+    prfilt: Callable[[float], float]
+    if args.alpha > 0:
+        prfilt = EMA(args.alpha)
+    else:
+        prfilt = lambda x: x
+
     status = False
     try:
         name = "edna_" + deployment.id + ".ndjson"
         with open(os.path.join(deployment.dir, name), "w") as fp:
-            status = runedna(cfg, deployment, Datafile(fp))
+            status = runedna(cfg, deployment, Datafile(fp), prfilt)
     except Exception:
         logger.exception("Deployment aborted with an exception")
 
@@ -278,7 +293,9 @@ def main() -> int:
     arpath = os.path.join(args.outbox, "edna_" + deployment.id + ".tar.gz")
     logger.info("Archiving deployment directory to %s", arpath)
     with tarfile.open(arpath, "w:gz") as tar:
-        tar.add(deployment.dir)
+        head, tail = os.path.split(deployment.dir)
+        os.chdir(head)
+        tar.add(tail)
 
     if args.clean:
         GPIO.cleanup()
