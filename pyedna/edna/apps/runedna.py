@@ -51,15 +51,18 @@ class Deployment(object):
     seek_time: float
     depth_err: float
     pr_rate: float
+    downcast: bool
 
     def __init__(self, id: str, dir: str,
                  seek_err: float = 0, seek_time: float = 0,
-                 depth_err: float = 0, pr_rate: float = 0):
+                 depth_err: float = 0, pr_rate: float = 0,
+                 downcast: bool = False):
         self.id, self.dir = id, dir
         self.seek_err = seek_err
         self.seek_time = seek_time
         self.depth_err = depth_err
         self.pr_rate = pr_rate
+        self.downcast = downcast
 
 
 class AbortDeployment(Exception):
@@ -179,6 +182,7 @@ def runedna(cfg: Config,
         deployment.depth_err = cfg.get_float('Deployment', 'DepthErr')
         deployment.pr_rate = cfg.get_float('Deployment', 'PrRate')
         deployment.seek_time = cfg.get_int('Deployment', 'SeekTime')
+        deployment.downcast = cfg.get_bool('Deployment', 'Downcast')
 
         # Each entry in depths is a tuple containing the depth and
         # the sample index.
@@ -196,7 +200,7 @@ def runedna(cfg: Config,
         batteries = []
 
     # Samples are collected in depth order, not index order.
-    depths.sort(key=lambda e: e[0])
+    depths.sort(key=lambda e: e[0], reverse=not deployment.downcast)
     for target, index in depths:
         logger.info("Seeking depth for sample %d; %.2f +/- %.2f",
                     index, target, deployment.seek_err)
