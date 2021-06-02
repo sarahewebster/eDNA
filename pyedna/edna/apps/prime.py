@@ -8,7 +8,6 @@ import time
 import logging
 from typing import Callable, Tuple
 from functools import partial
-from contextlib import contextmanager
 try:
     import RPi.GPIO as GPIO # type: ignore
 except ImportError:

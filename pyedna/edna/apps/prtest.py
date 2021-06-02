@@ -7,14 +7,14 @@ import argparse
 import time
 import os.path
 import logging
-from typing import Tuple, Any, Dict, Optional, Callable
-from collections import OrderedDict, namedtuple
+from typing import Optional, Callable
+from collections import OrderedDict
 try:
     from Adafruit_ADS1x15 import ADS1115 # type: ignore
 except ImportError:
     from edna.mockpr import Adc as ADS1115
 from edna import ticker
-from edna.periph import PrSensor, psia_to_dbar
+from edna.periph import PrSensor, psi_to_dbar
 from edna.config import Config, BadEntry
 from edna.sample import Datafile
 from edna.ema import EMA
@@ -63,7 +63,7 @@ def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bo
                                   cfg.get_expr('Pressure.Filter', 'Gain'),
                                   coeff=cfg.get_array('Pressure.Filter', 'Coeff'))
 
-    except BadEntry as e:
+    except BadEntry:
         logger.exception("Configuration error")
         return False
 
@@ -81,7 +81,7 @@ def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bo
             psi = prfilt(sens[args.sensor].read())
             if args.dbars:
                 rec = OrderedDict(elapsed=round(tick-t0, 3),
-                                  dbars=round(psia_to_dbar(psi), 3))
+                                  dbars=round(psi_to_dbar(psi), 3))
             else:
                 rec = OrderedDict(elapsed=round(tick-t0, 3),
                                   psi=round(psi, 3))
@@ -113,7 +113,7 @@ def main() -> int:
             status = runtest(cfg, args, Datafile(args.out))
         else:
             status = runtest(cfg, args, None)
-    except Exception as e:
+    except Exception:
         logging.exception("Error running the sensor test")
 
     return 0 if status else 1

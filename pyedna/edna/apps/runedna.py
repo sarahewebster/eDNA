@@ -6,14 +6,12 @@ import sys
 import os
 import os.path
 import argparse
-import time
 import logging
 import datetime
 import tarfile
 import signal
 from typing import Callable, Tuple, NamedTuple
 from functools import partial
-from collections import OrderedDict
 # Mock some of the RPi specific packages for local
 # integration testing.
 try:
@@ -29,10 +27,10 @@ try:
     from smbus import SMBus # type: ignore
 except ImportError:
     from edna.mocksmbus import SMBus
-from edna import ticker, __version__
+from edna import __version__
 from edna.sample import Datafile, FlowLimits, collect, seekdepth
 from edna.periph import Valve, Pump, FlowMeter, LED, \
-    Battery, PrSensor, psia_to_dbar, blinker, fader
+    Battery, PrSensor, psi_to_dbar, blinker
 from edna.config import Config, BadEntry
 from edna.ema import EMA
 
@@ -141,7 +139,7 @@ def runedna(cfg: Config,
                              cfg.get_expr('Pressure.Env', 'Gain'),
                              coeff=cfg.get_array('Pressure.Env', 'Coeff'))
         # Discard the first sample
-        psia_to_dbar(pr["Env"].read())
+        psi_to_dbar(pr["Env"].read())
 
         prmax = cfg.get_float('Pressure.Filter', 'Max')
         def checkpr() -> Tuple[float, bool]:
@@ -149,7 +147,7 @@ def runedna(cfg: Config,
             return psi, psi < prmax
 
         def checkdepth(limits: Tuple[float, float]) -> Tuple[float, bool]:
-            dbar = psia_to_dbar(pr["Env"].read())
+            dbar = psi_to_dbar(pr["Env"].read())
             return prfilt(dbar), limits[0] <= dbar <= limits[1]
 
         pumps = dict()
@@ -189,7 +187,7 @@ def runedna(cfg: Config,
         depths = []
         for i, key in enumerate(['Sample.1', 'Sample.2', 'Sample.3']):
             depths.append((cfg.get_float(key, 'Depth'), i+1))
-    except BadEntry as e:
+    except BadEntry:
         logger.exception("Configuration error")
         return False
 
