@@ -57,12 +57,12 @@ def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bo
     sens.reset()
     try:
         for tick in ticker(interval):
-            vals = sens.amount()
-            rec = OrderedDict(elapsed=round(vals[1], 3),
-                              liters=round(vals[0], 3))
+            vol, secs = sens.amount()
+            rec = OrderedDict(elapsed=round(secs, 3),
+                              vol=round(vol, 3))
             writerec(rec)
             if df:
-                df.add_record("pr", rec, ts=tick)
+                df.add_record("flow", rec, ts=tick)
     except KeyboardInterrupt:
         print("done", file=sys.stderr)
 

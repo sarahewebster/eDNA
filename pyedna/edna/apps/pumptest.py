@@ -18,7 +18,7 @@ try:
 except ImportError:
     from edna.mockpr import Adc as ADS1115
 from edna import ticker
-from edna.periph import Valve, FlowMeter, Pump, PrSensor
+from edna.periph import Valve, AnalogFlowMeter, Pump, PrSensor
 from edna.config import Config, BadEntry
 from edna.sample import Datafile
 
@@ -80,8 +80,11 @@ def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bo
                                         lopen=cfg.get_string(vkey, 'open'),
                                         lclose=cfg.get_string(vkey, 'close'))
 
-        fm = FlowMeter(cfg.get_int('FlowSensor', 'Input'),
-                       cfg.get_int('FlowSensor', 'Ppl'))
+
+        fm = AnalogFlowMeter(adc,
+                             cfg.get_int('AnalogFlowSensor', 'Chan'),
+                             cfg.get_expr('AnalogFlowSensor', 'Gain'),
+                             cfg.get_array('AnalogFlowSensor', 'Coeff'))
     except BadEntry:
         logger.exception("Configuration error")
         return False

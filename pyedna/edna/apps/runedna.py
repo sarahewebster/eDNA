@@ -29,7 +29,7 @@ except ImportError:
     from edna.mocksmbus import SMBus
 from edna import __version__
 from edna.sample import Datafile, FlowLimits, collect, seekdepth
-from edna.periph import Valve, Pump, FlowMeter, LED, \
+from edna.periph import Valve, Pump, AnalogFlowMeter, LED, \
     Battery, PrSensor, psi_to_dbar, blinker
 from edna.config import Config, BadEntry
 from edna.ema import EMA
@@ -163,8 +163,10 @@ def runedna(cfg: Config,
                                 lopen=cfg.get_string(vkey, 'open'),
                                 lclose=cfg.get_string(vkey, 'close'))
 
-        fm = FlowMeter(cfg.get_int('FlowSensor', 'Input'),
-                       cfg.get_int('FlowSensor', 'Ppl'))
+        fm = AnalogFlowMeter(adc,
+                             cfg.get_int('AnalogFlowSensor', 'Chan'),
+                             cfg.get_expr('AnalogFlowSensor', 'Gain'),
+                             cfg.get_array('AnalogFlowSensor', 'Coeff'))
         sample_rate = cfg.get_float('FlowSensor', 'Rate')
         ledctl = LedCtl(obj=LED(cfg.get_int("LED", "GPIO")),
                         fast=cfg.get_float("LED", "fast"),

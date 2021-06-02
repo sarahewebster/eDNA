@@ -78,7 +78,7 @@ def read_battery(b: periph.Battery, tries: int = 4) -> Tuple[float, float, int]:
 
 def flow_monitor(df: Optional[Datafile], event: str,
                  pump: periph.Pump,
-                 fm: periph.FlowMeter,
+                 fm: periph.AnalogFlowMeter,
                  rate: float, stop: FlowLimits,
                  checkpr: Callable[[], Tuple[float, bool]],
                  checkdepth: Callable[[], Tuple[float, bool]],
@@ -142,7 +142,7 @@ EthanolIdx: int = 1
 def collect(df: Datafile, index: int,
             pumps: Tuple[periph.Pump, periph.Pump],
             valves: Mapping[str, periph.Valve],
-            fm: periph.FlowMeter,
+            fm: periph.AnalogFlowMeter,
             rate: float,
             limits: Tuple[FlowLimits, FlowLimits],
             checkpr: Callable[[], Tuple[float, bool]],
