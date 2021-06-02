@@ -294,11 +294,11 @@ class Integrator(object):
     gain: float
     vmax: float
     t0: float = 0
-    fncvt: Callable[[float], [float]]
+    fncvt: Any
     vbase: float = 4.096
 
     def __init__(self, adc: Any, chan: int, gain: float,
-                 fncvt: Callable[[float], [float]]):
+                 fncvt: Any):
         """
         :param adc: ADC object
         :param chan: channel number
@@ -306,6 +306,7 @@ class Integrator(object):
         :param fncvt: function to convert ADC voltage to
                       the value to integrate
         """
+        self.logger = logging.getLogger("integrator")
         self.adc = adc
         self.gain = gain
         self.chan = chan
