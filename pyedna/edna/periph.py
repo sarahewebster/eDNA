@@ -10,6 +10,7 @@ except ImportError:
     import edna.mockgpio as GPIO # type: ignore
 import time
 import logging
+import queue
 from threading import Thread, Event
 from typing import Tuple, Any, Callable, Union, List
 from contextlib import contextmanager
@@ -280,6 +281,87 @@ class PrSensor(object):
         finally:
             self.adc.stop_adc()
         return self.coeff[0] + v*self.coeff[1]
+
+
+class Integrator(object):
+    """
+    Class to integrate an analog signal input to an an Adafruit_ADS1x15 A/D converter.
+    """
+    adc: Any
+    ev: Event
+    tid: Any
+    chan: int
+    gain: float
+    vmax: float
+    t0: float = 0
+    fncvt: Callable[[float], [float]]
+    vbase: float = 4.096
+
+    def __init__(self, adc: Any, chan: int, gain: float,
+                 fncvt: Callable[[float], [float]]):
+        """
+        :param adc: ADC object
+        :param chan: channel number
+        :param gain: gain value
+        :param fncvt: function to convert ADC voltage to
+                      the value to integrate
+        """
+        self.adc = adc
+        self.gain = gain
+        self.chan = chan
+        self.fncvt = fncvt
+        self.vmax = self.vbase/gain
+        self.ev = Event()
+        self.tid = None
+
+    def _integrate(self, interval: float, q: queue.Queue):
+        self.adc.start_adc(self.chan, gain=self.gain)
+        sum = float(0.)
+        try:
+            for tick in ticker(interval):
+                x = self.adc.get_last_result()
+                v = self.vmax*x/32767.0
+                sum += (self.fncvt(v) * interval)
+                try:
+                    q.put_nowait((sum, time.time() - self.t0))
+                except queue.Full:
+                    pass
+                if self.ev.is_set():
+                    break
+        finally:
+            self.adc.stop_adc()
+
+    def start(self, period: float, q: queue.Queue):
+        """
+        Start a thread to sample and integrate the signal at the specified
+        period and write the integral values to a Queue
+        """
+        if self.tid is not None:
+            self.stop()
+        self.tid = Thread(target=self._integrate,
+                          args=(period, q), daemon=True)
+        self.ev.clear()
+        self.t0 = time.time()
+        self.tid.start()
+        self.logger.info("Start integrator; period = %.2fs", period)
+
+    def stop(self):
+        if self.tid is not None:
+            self.ev.set()
+            self.tid.join(timeout=2)
+            self.tid = None
+            self.logger.info("Stop integrator")
+
+
+class AnalogFlowMeter(Integrator):
+    """
+    Class to represent a Renesas FS2012 flow sensor interfaced to an ADC channel
+    """
+    def __init__(self, adc: Any, chan: int, gain: float,
+                 coeff: List[float]):
+        def cvt(v: float) -> float:
+            return coeff[0] + coeff[1]*v
+        super().__init__(adc, chan, gain, cvt)
 
 
 def psia_to_dbar(p: float) -> float:
