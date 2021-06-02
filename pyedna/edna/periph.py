@@ -10,10 +10,10 @@ except ImportError:
     import edna.mockgpio as GPIO # type: ignore
 import time
 import logging
-import queue
 from threading import Thread, Event
 from typing import Tuple, Any, Callable, Union, List
 from contextlib import contextmanager
+from collections import deque
 from . import ticker
 
 
@@ -315,7 +315,7 @@ class Integrator(object):
         self.ev = Event()
         self.tid = None
 
-    def _integrate(self, interval: float, q: queue.Queue):
+    def _integrate(self, interval: float, q: deque):
         self.adc.start_adc(self.chan, gain=self.gain)
         sum = float(0.)
         try:
@@ -323,16 +323,13 @@ class Integrator(object):
                 x = self.adc.get_last_result()
                 v = self.vmax*x/32767.0
                 sum += (self.fncvt(v) * interval)
-                try:
-                    q.put_nowait((sum, time.time() - self.t0))
-                except queue.Full:
-                    pass
+                q.appendleft((sum, time.time() - self.t0))
                 if self.ev.is_set():
                     break
         finally:
             self.adc.stop_adc()
 
-    def start(self, period: float, q: queue.Queue):
+    def start(self, period: float, q: deque):
         """
         Start a thread to sample and integrate the signal at the specified
         period and write the integral values to a Queue
@@ -362,7 +359,26 @@ class AnalogFlowMeter(Integrator):
                  coeff: List[float]):
         def cvt(v: float) -> float:
             return coeff[0] + coeff[1]*v
+        self.period = 0.1
         super().__init__(adc, chan, gain, cvt)
+
+    def reset(self):
+        self.q = deque([], 1)
+        self.start(self.period, self.q)
+
+    def amount(self) -> Tuple[float, float]:
+        """
+        Return the total flow amount in liters and the elapsed time
+        since the last reset.
+        """
+        if self.q is None:
+            return (0., 0.)
+        try:
+            rec = self.q.pop()
+            # Convert cc to liters
+            return (rec[0]/1000., rec[1])
+        except IndexError:
+            return (0., 0.)
 
 
 def psia_to_dbar(p: float) -> float:

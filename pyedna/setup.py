@@ -27,6 +27,7 @@ setup(name="edna",
               "runedna=edna.apps.runedna:main",
               "pumptest=edna.apps.pumptest:main",
               "prtest=edna.apps.prtest:main",
+              "flowtest=edna.apps.flowtest:main",
               "installcfg=edna.apps.installcfg:main",
               "installsvc=edna.apps.installsvc:main"
           ]
