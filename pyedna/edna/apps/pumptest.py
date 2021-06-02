@@ -7,8 +7,8 @@ import argparse
 import time
 import os.path
 import logging
-from typing import Tuple, Any, Dict, Optional
-from collections import OrderedDict, namedtuple
+from typing import Tuple, Optional
+from collections import OrderedDict
 try:
     import RPi.GPIO as GPIO # type: ignore
 except ImportError:
@@ -82,7 +82,7 @@ def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bo
 
         fm = FlowMeter(cfg.get_int('FlowSensor', 'Input'),
                        cfg.get_int('FlowSensor', 'Ppl'))
-    except BadEntry as e:
+    except BadEntry:
         logger.exception("Configuration error")
         return False
 
@@ -94,7 +94,6 @@ def runtest(cfg: Config, args: argparse.Namespace, df: Optional[Datafile]) -> bo
         logger.critical("Invalid valve: '%s'", args.valve)
         return False
 
-    t0 = time.time()
     interval = 1./args.rate
     print("Enter ctrl-c to exit ...", file=sys.stderr)
     try:
