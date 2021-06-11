@@ -15,16 +15,16 @@ from functools import partial
 # Mock some of the RPi specific packages for local
 # integration testing.
 try:
-    import RPi.GPIO as GPIO # type: ignore
+    import RPi.GPIO as GPIO  # type: ignore
 except (ImportError, ModuleNotFoundError):
-    import edna.mockgpio as GPIO # type: ignore
+    import edna.mockgpio as GPIO  # type: ignore
     GPIO.detector_freq = 20
 try:
-    from Adafruit_ADS1x15 import ADS1115 # type: ignore
+    from Adafruit_ADS1x15 import ADS1115  # type: ignore
 except ImportError:
     from edna.mockpr import Adc as ADS1115
 try:
-    from smbus import SMBus # type: ignore
+    from smbus import SMBus  # type: ignore
 except ImportError:
     from edna.mocksmbus import SMBus
 from edna import __version__
@@ -76,10 +76,13 @@ def abort(sig: int, frame):
 def parse_cmdline() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run an eDNA deployment",
                                      epilog="Version: " + __version__)
-    parser.set_defaults(syscfg=os.environ.get("EDNA_SYSCFG", os.path.expanduser("~/.config/edna/system.cfg")),
-                        datadir=os.environ.get("EDNA_DATADIR", os.path.expanduser("~/data")),
+    parser.set_defaults(syscfg=os.environ.get("EDNA_SYSCFG",
+                                              os.path.expanduser("~/.config/edna/system.cfg")),
+                        datadir=os.environ.get("EDNA_DATADIR",
+                                               os.path.expanduser("~/data")),
                         id=os.environ.get("EDNA_DEPLOYMENT_ID", ""),
-                        outbox=os.environ.get("EDNA_OUTBOX", os.path.expanduser("~/OUTBOX")))
+                        outbox=os.environ.get("EDNA_OUTBOX",
+                                              os.path.expanduser("~/OUTBOX")))
     parser.add_argument("cfg", metavar="FILE",
                         help="deployment configuration file")
     parser.add_argument("--syscfg", metavar="FILE",
@@ -125,6 +128,13 @@ def runedna(cfg: Config,
     logger = logging.getLogger()
     logger.info("Starting deployment: %s", deployment.id)
 
+    if cfg.has_section("Metadata"):
+        meta = []
+        for key in cfg.options("Metadata"):
+            meta.append(key)
+            meta.append(cfg.get_string("Metadata", key))
+        df.add_record("metadata", meta)
+
     # Extract parameters from configuration files
     try:
         pr = dict()
@@ -142,6 +152,7 @@ def runedna(cfg: Config,
         psi_to_dbar(pr["Env"].read())
 
         prmax = cfg.get_float('Pressure.Filter', 'Max')
+
         def checkpr() -> Tuple[float, bool]:
             psi = pr["Filter"].read()
             return psi, psi < prmax
@@ -222,8 +233,7 @@ def runedna(cfg: Config,
                          fm, sample_rate,
                          (limits["Sample"], limits["Ethanol"]),
                          checkpr,
-                         partial(checkdepth,drange), batteries)
-
+                         partial(checkdepth, drange), batteries)
 
     return True
 

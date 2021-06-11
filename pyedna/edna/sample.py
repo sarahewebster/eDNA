@@ -6,7 +6,8 @@
 """
 from . import periph, ticker
 from collections import OrderedDict, namedtuple
-from typing import Mapping, Any, List, Callable, Tuple, Optional
+from typing import Mapping, Any, List, Callable, Tuple, \
+    Optional, Union
 import datetime
 import json
 import time
@@ -14,7 +15,7 @@ import logging
 
 
 # Type hint for data records
-Record = Mapping[str, Any]
+Record = Union[Mapping[str, Any], List[str]]
 
 # flow_monitor stopping criteria
 FlowLimits = namedtuple('FlowLimits', ['time', 'amount'])
